@@ -3,9 +3,19 @@
 @tailwind utilities;
 
 :root {
-  color: #0f172a;
-  background: #f8fafc;
+  color: #3b352f;
+  background: #fbf7ef;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --mn-bg: #fbf7ef; /* light cream */
+  --mn-card: #ffffff; /* card background */
+  --mn-warm-beige: #f6efe4; /* table header */
+  --mn-primary: #5a3b2e; /* deep brown */
+  --mn-primary-dark: #462a20;
+  --mn-camel: #d4a373;
+  --mn-soft-red: #f8d6d6;
+  --mn-muted: #7a6b5a;
+  --mn-shadow: 0 10px 30px rgba(90,59,46,0.06);
 }
 
 * {
@@ -19,7 +29,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background: #f8fafc;
+  background: var(--mn-bg);
 }
 
 button,
@@ -29,8 +39,51 @@ select {
 }
 
 ::selection {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(212,163,115,0.18);
 }
+
+/* layout max widths tuned for desktop-first */
+.app-container {
+  max-width: 1200px;
+}
+@media (min-width: 1440px) {
+  .app-container { max-width: 1600px; }
+}
+@media (min-width: 1920px) {
+  .app-container { max-width: 1800px; }
+}
+
+/* Editing card emphasis animation */
+@keyframes mn-editing-focus {
+  0% { transform: scale(0.98); opacity: 0.96; box-shadow: none; }
+  100% { transform: scale(1); opacity: 1; box-shadow: var(--mn-shadow); }
+}
+.editing-card {
+  border-color: var(--mn-primary) !important;
+  animation: mn-editing-focus 360ms ease both;
+  box-shadow: 0 10px 30px rgba(90,59,46,0.08) !important;
+}
+
+/* small utility classes to match brand */
+.mn-primary-btn {
+  background: var(--mn-primary);
+  color: white;
+  border-radius: 9999px;
+}
+.mn-primary-btn:hover { background: var(--mn-primary-dark); }
+.mn-ghost-btn { background: #fff; border-radius: 9999px; }
+.mn-danger-btn { background: var(--mn-soft-red); color: #7a2b2b; border-radius: 9999px; }
+
+.mn-table thead th { position: sticky; top: 0; z-index: 10; background: var(--mn-warm-beige); }
+.mn-table tbody tr:hover td { background: rgba(246,239,228,0.6); }
+.mn-card { background: var(--mn-card); }
+
+.platform-youtube { background: rgba(234,76,69,0.08); color: #b83a2e; }
+.platform-instagram { background: rgba(212,163,115,0.08); color: #8b5b3a; }
+
+.status-badge { display: inline-flex; padding: 0.25rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight:600; background: rgba(90,59,46,0.06); color: var(--mn-muted); }
+
+.mn-table-container { overflow: auto; max-height: 65vh; }
 
 @media (max-width: 640px) {
   body {

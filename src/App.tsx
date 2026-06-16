@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -215,6 +215,7 @@ function App() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const formRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     window.localStorage.setItem(storageKey, JSON.stringify(items))
@@ -315,6 +316,8 @@ function App() {
   const handleEdit = (item: ContentItem) => {
     setForm(item)
     setEditingId(item.id)
+    // scroll to the form area smoothly
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
   }
 
   const handleDelete = (itemId: string) => {
@@ -416,22 +419,25 @@ function App() {
     setForm({ ...formDefaults, publishDate: form.publishDate })
   }
 
+  const formatUpdated = (iso?: string) => {
+    if (!iso) return '-'
+    try {
+      return new Date(iso).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    } catch { return iso }
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <header className="mb-8 flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+    <div className="min-h-screen text-slate-900">
+      <div className="mx-auto app-container px-4 py-6 sm:px-6 lg:px-8">
+        <header className="mb-8 flex flex-col gap-4 rounded-3xl border border-slate-200 mn-card p-6 shadow-sm sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-indigo-600">
-              콘텐츠 성과 대시보드
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900 sm:text-4xl">
-              유튜브 · 인스타그램 누적 성과 관리
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-              게시일별 조회수, 좋아요, 댓글을 한눈에 보고, 콘텐츠를 빠르게 등록하고 추적할 수 있는 단일 페이지 MVP입니다.
+            <h1 className="mt-2 text-3xl font-semibold text-[#5a3b2e] sm:text-4xl">I.U Dashboard</h1>
+            <p className="text-sm font-semibold tracking-[0.12em] text-[#8b5b3a]">Influencer Unit Performance Tracker</p>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7a6b5a] sm:text-base">
+              유튜브·인스타그램 콘텐츠의 누적 성과를 관리하고, 게시 후 7일차 기준 성과와 현재 성과를 비교합니다.
             </p>
           </div>
-          <div className="rounded-3xl bg-slate-900 px-5 py-4 text-white shadow-lg shadow-slate-900/10 sm:w-auto">
+          <div className="rounded-3xl px-5 py-4 text-white shadow-lg sm:w-auto" style={{ background: 'var(--mn-primary)' }}>
             <p className="text-sm text-slate-300">현재 저장된 콘텐츠</p>
             <p className="mt-2 text-3xl font-semibold">{totalItems}</p>
           </div>
@@ -449,12 +455,18 @@ function App() {
           </div>
         ) : null}
 
-        <section className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="grid gap-6 lg:grid-cols-3">
+          <div ref={formRef} className={`rounded-3xl border border-slate-200 bg-white p-6 shadow-sm ${editingId ? 'editing-card' : ''} lg:col-span-2`}>
             <div className="flex items-center justify-between gap-4 pb-4">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">{editingId ? '콘텐츠 수정' : '콘텐츠 등록'}</h2>
-                <p className="mt-1 text-sm text-slate-600">URL과 KPI를 입력해 새로운 콘텐츠를 추가하거나 기존 콘텐츠를 수정하세요.</p>
+                <p className="mt-1 text-sm text-[#7a6b5a]">URL과 KPI를 입력해 새로운 콘텐츠를 추가하거나 기존 콘텐츠를 수정하세요.</p>
+                {editingId ? (
+                  <div className="mt-3 flex items-center gap-3">
+                    <span className="rounded-full bg-[#fff3e6] px-3 py-1 text-sm font-semibold text-[#8b5b3a]">현재 수정 중인 콘텐츠</span>
+                    <p className="text-sm text-[#7a6b5a]">현재 {form.title || '콘텐츠'} 수정 중입니다.</p>
+                  </div>
+                ) : null}
               </div>
               {editingId ? (
                 <button
@@ -465,7 +477,7 @@ function App() {
                   }}
                   className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-50"
                 >
-                  편집 취소
+                  수정 취소
                 </button>
               ) : null}
             </div>
@@ -476,7 +488,7 @@ function App() {
                   <input
                     value={form.title}
                     onChange={(e) => handleFieldChange('title', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                     placeholder="예: 여름 캠페인 하이라이트"
                   />
                 </label>
@@ -485,7 +497,7 @@ function App() {
                   <select
                     value={form.platform}
                     onChange={(e) => handleFieldChange('platform', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                   >
                     <option>YouTube</option>
                     <option>Instagram</option>
@@ -499,7 +511,7 @@ function App() {
                   <input
                     value={form.url}
                     onChange={(e) => handleFieldChange('url', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                     placeholder="https://"
                   />
                 </label>
@@ -508,7 +520,7 @@ function App() {
                   <input
                     value={form.influencer}
                     onChange={(e) => handleFieldChange('influencer', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                     placeholder="예: 채린"
                   />
                 </label>
@@ -520,7 +532,7 @@ function App() {
                   <input
                     value={form.campaign}
                     onChange={(e) => handleFieldChange('campaign', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                     placeholder="예: 바캉스 스페셜"
                   />
                 </label>
@@ -530,7 +542,7 @@ function App() {
                     type="date"
                     value={form.publishDate}
                     onChange={(e) => handleFieldChange('publishDate', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                   />
                 </label>
               </div>
@@ -543,7 +555,7 @@ function App() {
                     min={0}
                     value={form.viewsDay7}
                     onChange={(e) => handleFieldChange('viewsDay7', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                   />
                 </label>
                 <label className="space-y-2 text-sm text-slate-700">
@@ -553,7 +565,7 @@ function App() {
                     min={0}
                     value={form.likesDay7}
                     onChange={(e) => handleFieldChange('likesDay7', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                   />
                 </label>
                 <label className="space-y-2 text-sm text-slate-700">
@@ -563,7 +575,7 @@ function App() {
                     min={0}
                     value={form.commentsDay7}
                     onChange={(e) => handleFieldChange('commentsDay7', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                   />
                 </label>
               </div>
@@ -576,7 +588,7 @@ function App() {
                     min={0}
                     value={form.currentViews}
                     onChange={(e) => handleFieldChange('currentViews', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                   />
                 </label>
                 <label className="space-y-2 text-sm text-slate-700">
@@ -586,7 +598,7 @@ function App() {
                     min={0}
                     value={form.currentLikes}
                     onChange={(e) => handleFieldChange('currentLikes', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                   />
                 </label>
                 <label className="space-y-2 text-sm text-slate-700">
@@ -596,36 +608,36 @@ function App() {
                     min={0}
                     value={form.currentComments}
                     onChange={(e) => handleFieldChange('currentComments', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                   />
                 </label>
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-slate-500">입력 후 ‘콘텐츠 등록’ 버튼을 클릭하면 즉시 저장됩니다.</p>
+                <p className="text-sm text-[#7a6b5a]">입력 후 ‘콘텐츠 등록’ 버튼을 클릭하면 즉시 저장됩니다.</p>
                 <button
                   type="submit"
-                  className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                  className="inline-flex items-center justify-center rounded-2xl mn-primary-btn px-5 py-3 text-sm font-semibold transition hover:opacity-95"
                 >
-                  {editingId ? '수정 저장' : '콘텐츠 등록'}
+                  {editingId ? '콘텐츠 수정 저장' : '콘텐츠 등록'}
                 </button>
               </div>
             </form>
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm mn-card">
               <h2 className="text-xl font-semibold text-slate-900">핵심 지표</h2>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                <article className="rounded-3xl bg-slate-50 p-5">
+                  <article className="rounded-3xl bg-slate-50 p-5 mn-card">
                   <p className="text-sm text-slate-500">평균 조회수 증가율</p>
                   <p className="mt-2 text-3xl font-semibold text-slate-900">{(avgGrowthRate * 100).toFixed(1)}%</p>
                 </article>
-                <article className="rounded-3xl bg-slate-50 p-5">
+                  <article className="rounded-3xl bg-slate-50 p-5 mn-card">
                   <p className="text-sm text-slate-500">7일 이후 성장 중인 콘텐츠</p>
                   <p className="mt-2 text-3xl font-semibold text-slate-900">{longTrackingCount}</p>
                 </article>
-                <article className="rounded-3xl bg-slate-50 p-5 sm:col-span-2">
+                  <article className="rounded-3xl bg-slate-50 p-5 sm:col-span-2 mn-card">
                   <p className="text-sm text-slate-500">현재 총 조회수</p>
                   <p className="mt-2 text-3xl font-semibold text-slate-900">{formatNumber(currentTotalViews)}</p>
                 </article>
@@ -641,7 +653,7 @@ function App() {
                     <XAxis dataKey="platform" axisLine={false} tickLine={false} />
                     <YAxis tickFormatter={(value) => `${value}%`} axisLine={false} tickLine={false} />
                     <Tooltip formatter={(value: number) => [`${value}%`, '증가율']} />
-                    <Bar dataKey="avgGrowth" fill="#6366f1" radius={[12, 12, 0, 0]} />
+                    <Bar dataKey="avgGrowth" fill="#5a3b2e" radius={[12, 12, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -665,14 +677,14 @@ function App() {
                   <YAxis tickFormatter={(value) => `${value / 1000}k`} axisLine={false} tickLine={false} />
                   <Tooltip formatter={(value: number) => [formatNumber(value), '조회수']} />
                   <Legend />
-                  <Bar dataKey="7일차" fill="#818cf8" radius={[10, 10, 0, 0]} />
-                  <Bar dataKey="현재" fill="#22c55e" radius={[10, 10, 0, 0]} />
+                  <Bar dataKey="7일차" fill="#d4a373" radius={[10, 10, 0, 0]} />
+                  <Bar dataKey="현재" fill="#5a3b2e" radius={[10, 10, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm mn-card">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">콘텐츠 목록</h2>
@@ -691,14 +703,14 @@ function App() {
                 <button
                   type="button"
                   onClick={handleClearAll}
-                  className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                  className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 mn-danger-btn"
                 >
                   전체 데이터 삭제
                 </button>
               </div>
             </div>
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+            <div className="mt-4 mn-table-container">
+              <table className="min-w-full border-separate border-spacing-0 text-left text-sm mn-table">
                 <thead className="bg-slate-100 text-slate-700">
                   <tr>
                     <th className="px-4 py-3">콘텐츠명</th>
@@ -706,11 +718,11 @@ function App() {
                     <th className="px-4 py-3">인플루언서</th>
                     <th className="px-4 py-3">캠페인</th>
                     <th className="px-4 py-3">게시일</th>
-                    <th className="px-4 py-3">7일차 조회수</th>
-                    <th className="px-4 py-3">현재 조회수</th>
-                    <th className="px-4 py-3">조회수 증가율</th>
-                    <th className="px-4 py-3">현재 좋아요</th>
-                    <th className="px-4 py-3">현재 댓글</th>
+                    <th className="px-4 py-3 text-right">7일차 조회수</th>
+                    <th className="px-4 py-3 text-right">현재 조회수</th>
+                    <th className="px-4 py-3 text-right">조회수 증가율</th>
+                    <th className="px-4 py-3 text-right">현재 좋아요</th>
+                    <th className="px-4 py-3 text-right">현재 댓글</th>
                     <th className="px-4 py-3">마지막 업데이트</th>
                     <th className="px-4 py-3">작업</th>
                     <th className="px-4 py-3">상태</th>
@@ -722,7 +734,7 @@ function App() {
                     return (
                       <tr key={item.id} className="border-t border-slate-200">
                         <td className="px-4 py-4 align-top text-slate-900">
-                          <a href={item.url} target="_blank" rel="noreferrer" className="font-medium text-slate-900 hover:text-indigo-600">
+                          <a href={item.url} target="_blank" rel="noreferrer" className="font-medium text-slate-900 hover:text-[#5a3b2e]">
                             {item.title}
                           </a>
                         </td>
@@ -730,8 +742,8 @@ function App() {
                           <span
                             className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
                               item.platform === 'YouTube'
-                                ? 'bg-red-100 text-red-700'
-                                : 'bg-pink-100 text-pink-700'
+                                ? 'platform-youtube'
+                                : 'platform-instagram'
                             }`}
                           >
                             {item.platform}
@@ -740,14 +752,12 @@ function App() {
                         <td className="px-4 py-4 align-top text-slate-700">{item.influencer}</td>
                         <td className="px-4 py-4 align-top text-slate-700">{item.campaign}</td>
                         <td className="px-4 py-4 align-top text-slate-700">{item.publishDate}</td>
-                        <td className="px-4 py-4 align-top text-slate-700">{formatNumber(item.viewsDay7)}</td>
-                        <td className="px-4 py-4 align-top text-slate-700">{formatNumber(item.currentViews)}</td>
-                        <td className="px-4 py-4 align-top text-slate-700">{(growth * 100).toFixed(1)}%</td>
-                        <td className="px-4 py-4 align-top text-slate-700">{formatNumber(item.currentLikes)}</td>
-                        <td className="px-4 py-4 align-top text-slate-700">{formatNumber(item.currentComments)}</td>
-                        <td className="px-4 py-4 align-top text-slate-700">
-                          {item.lastUpdatedAt ? new Date(item.lastUpdatedAt).toLocaleString('ko-KR') : '-'}
-                        </td>
+                        <td className="px-4 py-4 align-top text-slate-700 text-right">{formatNumber(item.viewsDay7)}</td>
+                        <td className="px-4 py-4 align-top text-slate-700 text-right">{formatNumber(item.currentViews)}</td>
+                        <td className="px-4 py-4 align-top text-slate-700 text-right">{(growth * 100).toFixed(1)}%</td>
+                        <td className="px-4 py-4 align-top text-slate-700 text-right">{formatNumber(item.currentLikes)}</td>
+                        <td className="px-4 py-4 align-top text-slate-700 text-right">{formatNumber(item.currentComments)}</td>
+                        <td className="px-4 py-4 align-top text-slate-700">{formatUpdated(item.lastUpdatedAt)}</td>
                         <td className="px-4 py-4 align-top">
                           <div className="flex flex-wrap gap-2">
                             <button
@@ -757,7 +767,7 @@ function App() {
                               className={`rounded-2xl px-3 py-2 text-xs font-semibold transition ${
                                 item.platform !== 'YouTube'
                                   ? 'cursor-not-allowed bg-slate-100 text-slate-400'
-                                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                  : 'mn-primary-btn'
                               }`}
                             >
                               {updatingId === item.id ? '업데이트 중...' : '성과 업데이트'}
@@ -765,20 +775,20 @@ function App() {
                             <button
                               type="button"
                               onClick={() => handleEdit(item)}
-                              className="rounded-2xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
+                              className="rounded-2xl px-3 py-2 text-xs font-semibold text-white mn-primary-btn transition hover:opacity-95"
                             >
                               수정
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDelete(item.id)}
-                              className="rounded-2xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+                              className="rounded-2xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 mn-danger-btn"
                             >
                               삭제
                             </button>
                           </div>
                         </td>
-                        <td className="px-4 py-4 align-top text-slate-700">{getStatus(item)}</td>
+                        <td className="px-4 py-4 align-top text-slate-700"><span className="status-badge">{getStatus(item)}</span></td>
                       </tr>
                     )
                   })}
