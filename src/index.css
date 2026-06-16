@@ -85,6 +85,8 @@ select {
 
 .mn-table-container { overflow: auto; max-height: 65vh; }
 
+/* mn: MyNormal theme and UX updates applied */
+
 @media (max-width: 640px) {
   body {
     font-size: 14px;

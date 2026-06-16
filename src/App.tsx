@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+// mn: applied MyNormal brand and edit-UX updates
 import {
   Bar,
   BarChart,
