@@ -175,6 +175,7 @@ const formDefaults: ContentItem = {
 }
 
 const storageKey = 'iu-dashboard-contents'
+const pinStorageKey = 'iu-dashboard-pin'
 
 const parseStoredItems = (): ContentItem[] => {
   const raw = window.localStorage.getItem(storageKey)
@@ -256,6 +257,22 @@ function App() {
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [openActionId, setOpenActionId] = useState<string | null>(null)
+  const [pin, setPin] = useState<string>(() => {
+    const stored = window.localStorage.getItem(pinStorageKey)
+    return stored || '0000'
+  })
+  const [pinModal, setPinModal] = useState<boolean>(false)
+  const [pinChangeModal, setPinChangeModal] = useState<boolean>(false)
+  const [pinInput, setPinInput] = useState<string>('')
+  const [pinError, setPinError] = useState<string>('')
+  const [pendingAction, setPendingAction] = useState<{ action: 'edit' | 'delete' | 'resetSample' | 'clearAll'; itemId?: string } | null>(null)
+  const [deleteConfirmation, setDeleteConfirmation] = useState<boolean>(false)
+  const [changePin, setChangePin] = useState<{ current: string; new: string; confirm: string }>({
+    current: '',
+    new: '',
+    confirm: '',
+  })
+  const [changePinError, setChangePinError] = useState<string>('')
   const formRef = useRef<HTMLDivElement | null>(null)
 
   const hasUnsavedChanges = !areItemsEqual(items, persistedItems)
@@ -275,6 +292,13 @@ function App() {
     const timer = window.setTimeout(() => setStatusMessage(null), 5000)
     return () => window.clearTimeout(timer)
   }, [statusMessage])
+
+  useEffect(() => {
+    // Initialize PIN in localStorage if not set
+    if (!window.localStorage.getItem(pinStorageKey)) {
+      window.localStorage.setItem(pinStorageKey, '0000')
+    }
+  }, [])
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -381,31 +405,106 @@ function App() {
   }
 
   const handleEdit = (item: ContentItem) => {
-    setForm(item)
-    setEditingId(item.id)
-    // scroll to the form area smoothly
-    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
+    setPendingAction({ action: 'edit', itemId: item.id })
+    setPinModal(true)
+    setPinInput('')
+    setPinError('')
   }
 
   const handleDelete = (itemId: string) => {
-    setItems(items.filter((item) => item.id !== itemId))
-    if (editingId === itemId) {
-      setEditingId(null)
-      setForm(formDefaults)
-    }
+    setPendingAction({ action: 'delete', itemId })
+    setPinModal(true)
+    setPinInput('')
+    setPinError('')
   }
 
   const handleResetSample = () => {
-    setItems(sampleData)
-    setEditingId(null)
-    setForm(formDefaults)
+    setPendingAction({ action: 'resetSample' })
+    setPinModal(true)
+    setPinInput('')
+    setPinError('')
   }
 
   const handleClearAll = () => {
-    setItems([])
-    setEditingId(null)
-    setForm({ ...formDefaults, publishDate: new Date().toISOString().slice(0, 10) })
+    setPendingAction({ action: 'clearAll' })
+    setPinModal(true)
+    setPinInput('')
+    setPinError('')
   }
+
+  const executePendingAction = () => {
+    if (!pendingAction) return
+
+    if (pendingAction.action === 'edit') {
+      const item = items.find((i) => i.id === pendingAction.itemId)
+      if (item) {
+        setForm(item)
+        setEditingId(item.id)
+        setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
+      }
+    } else if (pendingAction.action === 'delete') {
+      if (deleteConfirmation) {
+        setItems(items.filter((item) => item.id !== pendingAction.itemId))
+        if (editingId === pendingAction.itemId) {
+          setEditingId(null)
+          setForm(formDefaults)
+        }
+        setDeleteConfirmation(false)
+      } else {
+        setDeleteConfirmation(true)
+        return
+      }
+    } else if (pendingAction.action === 'resetSample') {
+      setItems(sampleData)
+      setEditingId(null)
+      setForm(formDefaults)
+    } else if (pendingAction.action === 'clearAll') {
+      setItems([])
+      setEditingId(null)
+      setForm({ ...formDefaults, publishDate: new Date().toISOString().slice(0, 10) })
+    }
+
+    setPinModal(false)
+    setPinInput('')
+    setPinError('')
+    setPendingAction(null)
+    setDeleteConfirmation(false)
+  }
+
+  const handleVerifyPin = () => {
+    if (pinInput === pin) {
+      executePendingAction()
+    } else {
+      setPinError('비밀번호가 일치하지 않습니다.')
+      setPinInput('')
+    }
+  }
+
+  const handleSavePinChange = () => {
+    setChangePinError('')
+
+    if (changePin.current !== pin) {
+      setChangePinError('현재 비밀번호가 일치하지 않습니다.')
+      return
+    }
+
+    if (changePin.new.length !== 4 || !/^\d+$/.test(changePin.new)) {
+      setChangePinError('새 비밀번호는 숫자 4자리여야 합니다.')
+      return
+    }
+
+    if (changePin.new !== changePin.confirm) {
+      setChangePinError('새 비밀번호가 일치하지 않습니다.')
+      return
+    }
+
+    window.localStorage.setItem(pinStorageKey, changePin.new)
+    setPin(changePin.new)
+    setPinChangeModal(false)
+    setChangePin({ current: '', new: '', confirm: '' })
+    setStatusMessage({ type: 'success', text: '비밀번호가 변경되었습니다.' })
+  }
+
 
   const totalItems = items.length
   const avgGrowthRate = useMemo(() => {
@@ -980,6 +1079,13 @@ function App() {
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
+                  onClick={() => setPinChangeModal(true)}
+                  className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
+                >
+                  비밀번호 변경
+                </button>
+                <button
+                  type="button"
                   onClick={handleResetSample}
                   className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
                 >
@@ -1167,6 +1273,182 @@ function App() {
             </div>
           </div>
         </section>
+
+        {/* PIN Verification Modal */}
+        {pinModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">비밀번호 확인</h2>
+              {deleteConfirmation && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                  <p className="text-sm text-red-700 font-medium">정말 삭제하시겠습니까?</p>
+                  <p className="text-xs text-red-600 mt-1">이 작업은 취소할 수 없습니다.</p>
+                </div>
+              )}
+              {!deleteConfirmation && (
+                <>
+                  <p className="text-sm text-slate-600 mb-4">작업을 진행하려면 비밀번호를 입력하세요.</p>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={pinInput}
+                    onChange={(e) => {
+                      setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4))
+                      setPinError('')
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && pinInput.length === 4) {
+                        handleVerifyPin()
+                      }
+                    }}
+                    placeholder="4자리 숫자 입력"
+                    className="w-full px-4 py-2 rounded-xl border border-slate-300 text-center text-lg tracking-widest placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5a3b2e] mb-3"
+                  />
+                  {pinError && <p className="text-sm text-red-600 mb-3">{pinError}</p>}
+                </>
+              )}
+              <div className="flex gap-3 justify-end">
+                {deleteConfirmation ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeleteConfirmation(false)
+                        setPinInput('')
+                      }}
+                      className="px-4 py-2 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      onClick={executePendingAction}
+                      className="px-4 py-2 rounded-xl bg-red-600 text-sm font-semibold text-white hover:bg-red-700 transition"
+                    >
+                      삭제
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPinModal(false)
+                        setPinInput('')
+                        setPinError('')
+                        setPendingAction(null)
+                        setDeleteConfirmation(false)
+                      }}
+                      className="px-4 py-2 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleVerifyPin}
+                      disabled={pinInput.length !== 4}
+                      className={`px-4 py-2 rounded-xl text-sm font-semibold text-white transition ${
+                        pinInput.length === 4
+                          ? 'bg-[#5a3b2e] hover:bg-[#462a20]'
+                          : 'cursor-not-allowed bg-slate-300'
+                      }`}
+                    >
+                      확인
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PIN Change Modal */}
+        {pinChangeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">비밀번호 변경</h2>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">현재 비밀번호</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={changePin.current}
+                    onChange={(e) => {
+                      setChangePin({ ...changePin, current: e.target.value.replace(/\D/g, '').slice(0, 4) })
+                      setChangePinError('')
+                    }}
+                    placeholder="4자리 숫자"
+                    className="w-full px-4 py-2 rounded-xl border border-slate-300 text-center text-lg tracking-widest placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5a3b2e]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">새 비밀번호</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={changePin.new}
+                    onChange={(e) => {
+                      setChangePin({ ...changePin, new: e.target.value.replace(/\D/g, '').slice(0, 4) })
+                      setChangePinError('')
+                    }}
+                    placeholder="4자리 숫자"
+                    className="w-full px-4 py-2 rounded-xl border border-slate-300 text-center text-lg tracking-widest placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5a3b2e]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">새 비밀번호 확인</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={changePin.confirm}
+                    onChange={(e) => {
+                      setChangePin({ ...changePin, confirm: e.target.value.replace(/\D/g, '').slice(0, 4) })
+                      setChangePinError('')
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && changePin.current && changePin.new && changePin.confirm) {
+                        handleSavePinChange()
+                      }
+                    }}
+                    placeholder="4자리 숫자"
+                    className="w-full px-4 py-2 rounded-xl border border-slate-300 text-center text-lg tracking-widest placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#5a3b2e]"
+                  />
+                </div>
+              </div>
+              {changePinError && <p className="text-sm text-red-600 mt-3">{changePinError}</p>}
+              <div className="flex gap-3 justify-end mt-5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPinChangeModal(false)
+                    setChangePin({ current: '', new: '', confirm: '' })
+                    setChangePinError('')
+                  }}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSavePinChange}
+                  disabled={!changePin.current || !changePin.new || !changePin.confirm}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold text-white transition ${
+                    changePin.current && changePin.new && changePin.confirm
+                      ? 'bg-[#5a3b2e] hover:bg-[#462a20]'
+                      : 'cursor-not-allowed bg-slate-300'
+                  }`}
+                >
+                  변경
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <footer className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
           <p className="mb-2 font-semibold text-slate-900">자동 업데이트 안내</p>
