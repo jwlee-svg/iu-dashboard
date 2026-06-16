@@ -178,17 +178,24 @@ const formDefaults: ContentItem = {
   lastUpdatedAt: '',
 }
 
-const storageKey = 'content-dashboard-items'
+const storageKey = 'iu-dashboard-contents'
 
 const parseStoredItems = (): ContentItem[] => {
-  try {
-    const raw = window.localStorage.getItem(storageKey)
-    if (!raw) return sampleData
-    const parsed = JSON.parse(raw) as ContentItem[]
-    return Array.isArray(parsed) ? parsed : sampleData
-  } catch {
+  const raw = window.localStorage.getItem(storageKey)
+  if (raw === null) {
     return sampleData
   }
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      return parsed
+    }
+  } catch {
+    // If stored data is malformed, preserve the user's intent by avoiding sample fallback.
+  }
+
+  return []
 }
 
 const computeGrowthRate = (item: ContentItem) => {
@@ -216,7 +223,13 @@ function App() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [openActionId, setOpenActionId] = useState<string | null>(null)
   const formRef = useRef<HTMLDivElement | null>(null)
+
+  const saveItems = (nextItems: ContentItem[]) => {
+    setItems(nextItems)
+    window.localStorage.setItem(storageKey, JSON.stringify(nextItems))
+  }
 
   useEffect(() => {
     window.localStorage.setItem(storageKey, JSON.stringify(items))
@@ -289,19 +302,18 @@ function App() {
     try {
       const stats = await fetchYoutubeStatistics(videoId)
       const updatedAt = new Date().toISOString()
-      setItems((prev) =>
-        prev.map((current) =>
-          current.id === item.id
-            ? {
-                ...current,
-                currentViews: stats.currentViews,
-                currentLikes: stats.currentLikes,
-                currentComments: stats.currentComments,
-                lastUpdatedAt: updatedAt,
-              }
-            : current,
-        ),
+      const updatedItems = items.map((current) =>
+        current.id === item.id
+          ? {
+              ...current,
+              currentViews: stats.currentViews,
+              currentLikes: stats.currentLikes,
+              currentComments: stats.currentComments,
+              lastUpdatedAt: updatedAt,
+            }
+          : current,
       )
+      saveItems(updatedItems)
       setStatusMessage({
         type: 'success',
         text: `YouTube 성과가 최신값으로 업데이트되었습니다. (${new Date(updatedAt).toLocaleString('ko-KR')})`,
@@ -322,7 +334,7 @@ function App() {
   }
 
   const handleDelete = (itemId: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== itemId))
+    saveItems(items.filter((item) => item.id !== itemId))
     if (editingId === itemId) {
       setEditingId(null)
       setForm(formDefaults)
@@ -330,13 +342,13 @@ function App() {
   }
 
   const handleResetSample = () => {
-    setItems(sampleData)
+    saveItems(sampleData)
     setEditingId(null)
     setForm(formDefaults)
   }
 
   const handleClearAll = () => {
-    setItems([])
+    saveItems([])
     setEditingId(null)
     setForm({ ...formDefaults, publishDate: new Date().toISOString().slice(0, 10) })
   }
@@ -404,9 +416,8 @@ function App() {
     if (!form.title.trim() || !form.url.trim() || !form.influencer.trim()) return
 
     if (editingId) {
-      setItems((prev) =>
-        prev.map((item) => (item.id === editingId ? { ...form, id: editingId } : item)),
-      )
+      const updated = items.map((item) => (item.id === editingId ? { ...form, id: editingId } : item))
+      saveItems(updated)
       setEditingId(null)
       setForm({ ...formDefaults, publishDate: form.publishDate })
       return
@@ -416,25 +427,29 @@ function App() {
       ...form,
       id: String(Date.now()),
     }
-    setItems((prev) => [nextItem, ...prev])
+    saveItems([nextItem, ...items])
     setForm({ ...formDefaults, publishDate: form.publishDate })
   }
 
   const formatUpdated = (iso?: string) => {
     if (!iso) return '-'
-    try {
-      return new Date(iso).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-    } catch { return iso }
+    const date = new Date(iso)
+    if (Number.isNaN(date.getTime())) return iso
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hour = String(date.getHours()).padStart(2, '0')
+    const minute = String(date.getMinutes()).padStart(2, '0')
+    return `${month}-${day} ${hour}:${minute}`
   }
 
   return (
     <div className="min-h-screen text-slate-900">
       <div className="mx-auto app-container px-4 py-6 sm:px-6 lg:px-8">
-        <header className="mb-8 flex flex-col gap-4 rounded-3xl border border-slate-200 mn-card p-6 shadow-sm sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="mt-2 text-3xl font-semibold text-[#5a3b2e] sm:text-4xl">I.U Dashboard</h1>
-            <p className="text-sm font-semibold tracking-[0.12em] text-[#8b5b3a]">Influencer Unit Performance Tracker</p>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7a6b5a] sm:text-base">
+        <header className="mb-8 flex flex-col gap-4 rounded-3xl border border-slate-200 mn-card p-5 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-full sm:max-w-xl">
+            <h1 className="mt-2 text-2xl font-semibold text-[#5a3b2e] sm:text-3xl">I.U Dashboard</h1>
+            <p className="mt-1 text-xs font-semibold tracking-[0.12em] uppercase text-[#8b5b3a] sm:text-sm">Influencer Unit Performance Tracker</p>
+            <p className="mt-2 max-w-full text-xs leading-5 text-[#7a6b5a] sm:whitespace-nowrap">
               유튜브·인스타그램 콘텐츠의 누적 성과를 관리하고, 게시 후 7일차 기준 성과와 현재 성과를 비교합니다.
             </p>
           </div>
@@ -692,6 +707,7 @@ function App() {
                 <p className="mt-1 text-sm text-slate-500">
                   Instagram은 공개 API 제한으로 인해 1차 MVP에서는 자동 업데이트가 비활성화되어 있습니다.
                 </p>
+                <p className="mt-2 text-[12px] text-[#7a6b5a]">상태 기준: 게시 후 7일 미만 / 7일 이후 조회수 증가율 20% 이상은 장기 추적 중 / 그 외 기준 성과 확정</p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <button
@@ -711,22 +727,22 @@ function App() {
               </div>
             </div>
             <div className="mt-4 mn-table-container">
-              <table className="min-w-full border-separate border-spacing-0 text-left text-sm mn-table">
+              <table className="min-w-full border-separate border-spacing-0 text-left text-[13px] mn-table">
                 <thead className="bg-slate-100 text-slate-700">
                   <tr>
-                    <th className="px-4 py-3">콘텐츠명</th>
-                    <th className="px-4 py-3">플랫폼</th>
-                    <th className="px-4 py-3">인플루언서</th>
-                    <th className="px-4 py-3">캠페인</th>
-                    <th className="px-4 py-3">게시일</th>
-                    <th className="px-4 py-3 text-right">7일차 조회수</th>
-                    <th className="px-4 py-3 text-right">현재 조회수</th>
-                    <th className="px-4 py-3 text-right">조회수 증가율</th>
-                    <th className="px-4 py-3 text-right">현재 좋아요</th>
-                    <th className="px-4 py-3 text-right">현재 댓글</th>
-                    <th className="px-4 py-3">마지막 업데이트</th>
-                    <th className="px-4 py-3">작업</th>
-                    <th className="px-4 py-3">상태</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold whitespace-nowrap">콘텐츠명</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold whitespace-nowrap">플랫폼</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold whitespace-nowrap">인플루언서</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold whitespace-nowrap">캠페인</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold whitespace-nowrap">게시일</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold whitespace-nowrap text-right">7일차 조회수</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold whitespace-nowrap text-right">현재 조회수</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold whitespace-nowrap text-right">조회수 증가율</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold whitespace-nowrap text-right">현재 좋아요</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold whitespace-nowrap text-right">현재 댓글</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold whitespace-nowrap">마지막 업데이트</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold whitespace-nowrap">작업</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold whitespace-nowrap">상태</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -734,14 +750,14 @@ function App() {
                     const growth = computeGrowthRate(item)
                     return (
                       <tr key={item.id} className="border-t border-slate-200">
-                        <td className="px-4 py-4 align-top text-slate-900">
-                          <a href={item.url} target="_blank" rel="noreferrer" className="font-medium text-slate-900 hover:text-[#5a3b2e]">
+                        <td className="px-4 py-4 align-top text-slate-900 max-w-[220px] min-w-0">
+                          <a href={item.url} target="_blank" rel="noreferrer" className="block max-w-full truncate font-medium text-slate-900 hover:text-[#5a3b2e]">
                             {item.title}
                           </a>
                         </td>
                         <td className="px-4 py-4 align-top">
                           <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                            className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold ${
                               item.platform === 'YouTube'
                                 ? 'platform-youtube'
                                 : 'platform-instagram'
@@ -750,46 +766,80 @@ function App() {
                             {item.platform}
                           </span>
                         </td>
-                        <td className="px-4 py-4 align-top text-slate-700">{item.influencer}</td>
-                        <td className="px-4 py-4 align-top text-slate-700">{item.campaign}</td>
-                        <td className="px-4 py-4 align-top text-slate-700">{item.publishDate}</td>
+                        <td className="px-4 py-4 align-top text-slate-700 max-w-[140px] min-w-0">
+                          <div className="max-w-full truncate">{item.influencer}</div>
+                        </td>
+                        <td className="px-4 py-4 align-top text-slate-700 max-w-[160px] min-w-0">
+                          <div className="max-w-full truncate">{item.campaign}</div>
+                        </td>
+                        <td className="px-4 py-4 align-top text-slate-700 whitespace-nowrap">{item.publishDate}</td>
                         <td className="px-4 py-4 align-top text-slate-700 text-right">{formatNumber(item.viewsDay7)}</td>
                         <td className="px-4 py-4 align-top text-slate-700 text-right">{formatNumber(item.currentViews)}</td>
                         <td className="px-4 py-4 align-top text-slate-700 text-right">{(growth * 100).toFixed(1)}%</td>
                         <td className="px-4 py-4 align-top text-slate-700 text-right">{formatNumber(item.currentLikes)}</td>
                         <td className="px-4 py-4 align-top text-slate-700 text-right">{formatNumber(item.currentComments)}</td>
-                        <td className="px-4 py-4 align-top text-slate-700">{formatUpdated(item.lastUpdatedAt)}</td>
+                        <td className="px-4 py-4 align-top text-slate-700 whitespace-nowrap">{formatUpdated(item.lastUpdatedAt)}</td>
                         <td className="px-4 py-4 align-top">
-                          <div className="flex flex-wrap gap-2">
+                          <div
+                            className="relative inline-flex"
+                            onBlur={(event) => {
+                              const related = event.relatedTarget as HTMLElement | null
+                              if (!related || !event.currentTarget.contains(related)) {
+                                setOpenActionId(null)
+                              }
+                            }}
+                          >
                             <button
                               type="button"
-                              disabled={item.platform !== 'YouTube' || (updatingId !== null && updatingId !== item.id)}
-                              onClick={() => handleUpdateStats(item)}
-                              className={`rounded-2xl px-3 py-2 text-xs font-semibold transition ${
-                                item.platform !== 'YouTube'
-                                  ? 'cursor-not-allowed bg-slate-100 text-slate-400'
-                                  : 'mn-primary-btn'
-                              }`}
+                              onClick={() => setOpenActionId(openActionId === item.id ? null : item.id)}
+                              className="inline-flex items-center rounded-2xl border border-slate-300 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
                             >
-                              {updatingId === item.id ? '업데이트 중...' : '성과 업데이트'}
+                              작업
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleEdit(item)}
-                              className="rounded-2xl px-3 py-2 text-xs font-semibold text-white mn-primary-btn transition hover:opacity-95"
-                            >
-                              수정
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(item.id)}
-                              className="rounded-2xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100 mn-danger-btn"
-                            >
-                              삭제
-                            </button>
+                            {openActionId === item.id ? (
+                              <div className="absolute right-0 top-full z-20 mt-2 w-40 space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-lg">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleUpdateStats(item)
+                                    setOpenActionId(null)
+                                  }}
+                                  disabled={item.platform !== 'YouTube' || (updatingId !== null && updatingId !== item.id)}
+                                  className={`w-full rounded-xl px-3 py-2 text-left text-[12px] font-semibold transition ${
+                                    item.platform !== 'YouTube'
+                                      ? 'cursor-not-allowed bg-slate-50 text-slate-400'
+                                      : 'text-[#5a3b2e] hover:bg-[#f7e7d9]'
+                                  }`}
+                                >
+                                  성과 업데이트
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleEdit(item)
+                                    setOpenActionId(null)
+                                  }}
+                                  className="w-full rounded-xl px-3 py-2 text-left text-[12px] font-semibold text-[#5a3b2e] transition hover:bg-[#f7e7d9]"
+                                >
+                                  수정
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleDelete(item.id)
+                                    setOpenActionId(null)
+                                  }}
+                                  className="w-full rounded-xl px-3 py-2 text-left text-[12px] font-semibold text-red-700 transition hover:bg-red-50"
+                                >
+                                  삭제
+                                </button>
+                              </div>
+                            ) : null}
                           </div>
                         </td>
-                        <td className="px-4 py-4 align-top text-slate-700"><span className="status-badge">{getStatus(item)}</span></td>
+                        <td className="px-4 py-4 align-top text-slate-700">
+                          <span className="status-badge text-[11px] px-2 py-1">{getStatus(item)}</span>
+                        </td>
                       </tr>
                     )
                   })}
