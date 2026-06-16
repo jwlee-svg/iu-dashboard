@@ -388,15 +388,79 @@ function App() {
     }))
   }, [items])
 
-  const chartData = useMemo(
-    () =>
-      items.map((item) => ({
-        name: item.title,
-        '7일차': item.viewsDay7,
-        현재: item.currentViews,
-      })),
-    [items],
-  )
+  const chartData = useMemo(() => {
+    const grouped = new Map<
+      string,
+      {
+        title: string
+        sevenYoutube: number
+        sevenInstagram: number
+        currentYoutube: number
+        currentInstagram: number
+      }
+    >()
+
+    items.forEach((item) => {
+      const title = item.title || '무제'
+      if (!grouped.has(title)) {
+        grouped.set(title, {
+          title,
+          sevenYoutube: 0,
+          sevenInstagram: 0,
+          currentYoutube: 0,
+          currentInstagram: 0,
+        })
+      }
+
+      const entry = grouped.get(title)!
+      if (item.platform === 'YouTube') {
+        entry.sevenYoutube += item.viewsDay7
+        entry.currentYoutube += item.currentViews
+      } else {
+        entry.sevenInstagram += item.viewsDay7
+        entry.currentInstagram += item.currentViews
+      }
+    })
+
+    return Array.from(grouped.values()).map((entry) => ({
+      ...entry,
+      sevenTotal: entry.sevenYoutube + entry.sevenInstagram,
+      currentTotal: entry.currentYoutube + entry.currentInstagram,
+    }))
+  }, [items])
+
+  const formatTooltipValue = (value?: number) => (value !== undefined ? formatNumber(value) : '-')
+
+  const renderChartTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || !payload.length) return null
+
+    const data = payload.reduce(
+      (acc: Record<string, number>, item: any) => {
+        acc[item.dataKey] = item.value ?? 0
+        return acc
+      },
+      {},
+    )
+
+    const sevenYoutube = data.sevenYoutube ?? 0
+    const sevenInstagram = data.sevenInstagram ?? 0
+    const currentYoutube = data.currentYoutube ?? 0
+    const currentInstagram = data.currentInstagram ?? 0
+    const sevenTotal = sevenYoutube + sevenInstagram
+    const currentTotal = currentYoutube + currentInstagram
+
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-900 shadow-lg">
+        <p className="mb-2 font-semibold">{label}</p>
+        <p className="text-[12px] text-slate-500">7일차 총 조회수: {formatTooltipValue(sevenTotal)}</p>
+        <p className="text-[12px]">- YouTube: {formatTooltipValue(sevenYoutube)}</p>
+        <p className="text-[12px] mb-2">- Instagram: {formatTooltipValue(sevenInstagram)}</p>
+        <p className="text-[12px] text-slate-500">현재 총 조회수: {formatTooltipValue(currentTotal)}</p>
+        <p className="text-[12px]">- YouTube: {formatTooltipValue(currentYoutube)}</p>
+        <p className="text-[12px]">- Instagram: {formatTooltipValue(currentInstagram)}</p>
+      </div>
+    )
+  }
 
   const handleFieldChange = (
     field: keyof ContentItem,
@@ -681,20 +745,25 @@ function App() {
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900">콘텐츠별 조회수 비교</h2>
-                <p className="mt-1 text-sm text-slate-600">7일차 조회수와 현재 조회수를 막대그래프로 비교합니다.</p>
+                <h2 className="text-xl font-semibold text-slate-900">콘텐츠별 7일차 vs 현재 조회수 비교</h2>
+                <p className="mt-1 text-sm text-slate-600">각 콘텐츠별로 7일차와 현재 총 조회수를 플랫폼별 구성으로 함께 보여줍니다.</p>
               </div>
             </div>
             <div className="mt-6 h-[420px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 30 }}>
+                <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 80 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={0} angle={-25} textAnchor="end" height={80} />
+                  <XAxis dataKey="title" tick={{ fontSize: 12 }} interval={0} angle={-25} textAnchor="end" height={80} />
                   <YAxis tickFormatter={(value) => `${value / 1000}k`} axisLine={false} tickLine={false} />
-                  <Tooltip formatter={(value: number) => [formatNumber(value), '조회수']} />
-                  <Legend />
-                  <Bar dataKey="7일차" fill="#d4a373" radius={[10, 10, 0, 0]} />
-                  <Bar dataKey="현재" fill="#5a3b2e" radius={[10, 10, 0, 0]} />
+                  <Tooltip content={renderChartTooltip} />
+                  <Legend payload={[
+                    { value: 'YouTube', type: 'square', color: '#5a3b2e' },
+                    { value: 'Instagram', type: 'square', color: '#8b5b3a' },
+                  ]} />
+                  <Bar dataKey="sevenYoutube" name="YouTube" stackId="7day" fill="#5a3b2e" legendType="none" />
+                  <Bar dataKey="sevenInstagram" name="Instagram" stackId="7day" fill="#8b5b3a" legendType="none" />
+                  <Bar dataKey="currentYoutube" name="YouTube" stackId="current" fill="#3c2c23" legendType="none" />
+                  <Bar dataKey="currentInstagram" name="Instagram" stackId="current" fill="#b58b6f" legendType="none" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
