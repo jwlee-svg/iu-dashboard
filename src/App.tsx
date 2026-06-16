@@ -11,171 +11,167 @@ import {
   YAxis,
 } from 'recharts'
 
-type Platform = 'YouTube' | 'Instagram'
+type Platform = 'YouTube' | 'Instagram' | 'TikTok'
+type PlatformKey = 'youtube' | 'instagram' | 'tiktok'
+
+const allPlatforms: Platform[] = ['YouTube', 'Instagram', 'TikTok']
+const platformKey: Record<Platform, PlatformKey> = {
+  YouTube: 'youtube',
+  Instagram: 'instagram',
+  TikTok: 'tiktok',
+}
+
+interface PlatformMetrics {
+  url: string
+  sevenDayViews: number
+  currentViews: number
+  sevenDayLikes: number
+  currentLikes: number
+  sevenDayComments: number
+  currentComments: number
+  lastUpdatedAt: string
+  updateMode: 'auto' | 'manual'
+}
 
 interface ContentItem {
   id: string
-  title: string
-  platform: Platform
-  url: string
-  influencer: string
-  campaign: string
+  contentName: string
+  influencerName: string
+  campaignName: string
   publishDate: string
-  viewsDay7: number
-  likesDay7: number
-  commentsDay7: number
-  currentViews: number
-  currentLikes: number
-  currentComments: number
-  lastUpdatedAt: string
+  platforms: Platform[]
+  platformMetrics: Record<PlatformKey, PlatformMetrics>
+}
+
+const emptyMetrics: PlatformMetrics = {
+  url: '',
+  sevenDayViews: 0,
+  currentViews: 0,
+  sevenDayLikes: 0,
+  currentLikes: 0,
+  sevenDayComments: 0,
+  currentComments: 0,
+  lastUpdatedAt: '',
+  updateMode: 'manual',
 }
 
 const sampleData: ContentItem[] = [
   {
     id: '1',
-    title: '여름 캠페인 하이라이트',
-    platform: 'YouTube',
-    url: 'https://youtu.be/sample1',
-    influencer: '채린',
-    campaign: '바캉스 스페셜',
+    contentName: '여름 캠페인 하이라이트',
+    influencerName: '채린',
+    campaignName: '바캉스 스페셜',
     publishDate: '2026-05-28',
-    viewsDay7: 128000,
-    likesDay7: 5600,
-    commentsDay7: 280,
-    currentViews: 172000,
-    currentLikes: 7400,
-    currentComments: 340,
-    lastUpdatedAt: '',
+    platforms: ['YouTube', 'Instagram'],
+    platformMetrics: {
+      youtube: {
+        url: 'https://youtu.be/sample1',
+        sevenDayViews: 128000,
+        currentViews: 172000,
+        sevenDayLikes: 5600,
+        currentLikes: 7400,
+        sevenDayComments: 280,
+        currentComments: 340,
+        lastUpdatedAt: '2026-06-10T12:00:00.000Z',
+        updateMode: 'auto',
+      },
+      instagram: {
+        url: 'https://instagram.com/sample1',
+        sevenDayViews: 42000,
+        currentViews: 58000,
+        sevenDayLikes: 5200,
+        currentLikes: 6500,
+        sevenDayComments: 210,
+        currentComments: 260,
+        lastUpdatedAt: '2026-06-10T12:00:00.000Z',
+        updateMode: 'manual',
+      },
+      tiktok: { ...emptyMetrics },
+    },
   },
   {
     id: '2',
-    title: '스타일링 5분 룩',
-    platform: 'Instagram',
-    url: 'https://instagram.com/sample2',
-    influencer: '수지',
-    campaign: '데일리룩',
+    contentName: '스타일링 5분 룩',
+    influencerName: '수지',
+    campaignName: '데일리룩',
     publishDate: '2026-06-01',
-    viewsDay7: 82000,
-    likesDay7: 11200,
-    commentsDay7: 520,
-    currentViews: 98000,
-    currentLikes: 12800,
-    currentComments: 620,
-    lastUpdatedAt: '',
+    platforms: ['Instagram', 'TikTok'],
+    platformMetrics: {
+      youtube: { ...emptyMetrics },
+      instagram: {
+        url: 'https://instagram.com/sample2',
+        sevenDayViews: 82000,
+        currentViews: 98000,
+        sevenDayLikes: 11200,
+        currentLikes: 12800,
+        sevenDayComments: 520,
+        currentComments: 620,
+        lastUpdatedAt: '2026-06-10T12:00:00.000Z',
+        updateMode: 'manual',
+      },
+      tiktok: {
+        url: 'https://tiktok.com/@sample2',
+        sevenDayViews: 32000,
+        currentViews: 46000,
+        sevenDayLikes: 4800,
+        currentLikes: 5600,
+        sevenDayComments: 240,
+        currentComments: 280,
+        lastUpdatedAt: '2026-06-10T12:00:00.000Z',
+        updateMode: 'manual',
+      },
+    },
   },
   {
     id: '3',
-    title: '건강 레시피 챌린지',
-    platform: 'YouTube',
-    url: 'https://youtu.be/sample3',
-    influencer: '민호',
-    campaign: '건강한 한끼',
+    contentName: '건강 레시피 챌린지',
+    influencerName: '민호',
+    campaignName: '건강한 한끼',
     publishDate: '2026-05-25',
-    viewsDay7: 62000,
-    likesDay7: 3600,
-    commentsDay7: 210,
-    currentViews: 64500,
-    currentLikes: 3800,
-    currentComments: 240,
-    lastUpdatedAt: '',
-  },
-  {
-    id: '4',
-    title: '데일리 메이크업 튜토리얼',
-    platform: 'Instagram',
-    url: 'https://instagram.com/sample4',
-    influencer: '지영',
-    campaign: '뷰티 플러스',
-    publishDate: '2026-06-03',
-    viewsDay7: 45000,
-    likesDay7: 8100,
-    commentsDay7: 340,
-    currentViews: 49000,
-    currentLikes: 9200,
-    currentComments: 380,
-    lastUpdatedAt: '',
-  },
-  {
-    id: '5',
-    title: '모닝루틴 Q&A',
-    platform: 'YouTube',
-    url: 'https://youtu.be/sample5',
-    influencer: '준우',
-    campaign: '모닝 에너자이저',
-    publishDate: '2026-05-18',
-    viewsDay7: 98000,
-    likesDay7: 8900,
-    commentsDay7: 760,
-    currentViews: 147000,
-    currentLikes: 12600,
-    currentComments: 1020,
-    lastUpdatedAt: '',
-  },
-  {
-    id: '6',
-    title: '여행 준비 리스트',
-    platform: 'Instagram',
-    url: 'https://instagram.com/sample6',
-    influencer: '혜린',
-    campaign: '여행 키트',
-    publishDate: '2026-06-02',
-    viewsDay7: 38000,
-    likesDay7: 6400,
-    commentsDay7: 290,
-    currentViews: 41000,
-    currentLikes: 7000,
-    currentComments: 330,
-    lastUpdatedAt: '',
-  },
-  {
-    id: '7',
-    title: '운동 루틴 15분',
-    platform: 'YouTube',
-    url: 'https://youtu.be/sample7',
-    influencer: '성훈',
-    campaign: '바디 케어',
-    publishDate: '2026-05-22',
-    viewsDay7: 74000,
-    likesDay7: 6800,
-    commentsDay7: 410,
-    currentViews: 81000,
-    currentLikes: 7400,
-    currentComments: 450,
-    lastUpdatedAt: '',
-  },
-  {
-    id: '8',
-    title: '키친 트렌드 레시피',
-    platform: 'Instagram',
-    url: 'https://instagram.com/sample8',
-    influencer: '은지',
-    campaign: '홈쿡 시즌2',
-    publishDate: '2026-06-04',
-    viewsDay7: 25000,
-    likesDay7: 5200,
-    commentsDay7: 180,
-    currentViews: 26900,
-    currentLikes: 5800,
-    currentComments: 210,
-    lastUpdatedAt: '',
+    platforms: ['YouTube', 'TikTok'],
+    platformMetrics: {
+      youtube: {
+        url: 'https://youtu.be/sample3',
+        sevenDayViews: 62000,
+        currentViews: 64500,
+        sevenDayLikes: 3600,
+        currentLikes: 3800,
+        sevenDayComments: 210,
+        currentComments: 240,
+        lastUpdatedAt: '2026-06-10T12:00:00.000Z',
+        updateMode: 'auto',
+      },
+      instagram: { ...emptyMetrics },
+      tiktok: {
+        url: 'https://tiktok.com/@sample3',
+        sevenDayViews: 22000,
+        currentViews: 28000,
+        sevenDayLikes: 2400,
+        currentLikes: 2800,
+        sevenDayComments: 160,
+        currentComments: 190,
+        lastUpdatedAt: '2026-06-10T12:00:00.000Z',
+        updateMode: 'manual',
+      },
+    },
   },
 ]
 
 const formDefaults: ContentItem = {
   id: '',
-  title: '',
-  platform: 'YouTube',
-  url: '',
-  influencer: '',
-  campaign: '',
+  contentName: '',
+  influencerName: '',
+  campaignName: '',
   publishDate: new Date().toISOString().slice(0, 10),
-  viewsDay7: 0,
-  likesDay7: 0,
-  commentsDay7: 0,
-  currentViews: 0,
-  currentLikes: 0,
-  currentComments: 0,
-  lastUpdatedAt: '',
+  platforms: ['YouTube'],
+  platformMetrics: {
+    youtube: {
+      ...emptyMetrics,
+      updateMode: 'auto',
+    },
+    instagram: { ...emptyMetrics },
+    tiktok: { ...emptyMetrics },
+  },
 }
 
 const storageKey = 'iu-dashboard-contents'
@@ -201,9 +197,40 @@ const parseStoredItems = (): ContentItem[] => {
 const areItemsEqual = (first: ContentItem[], second: ContentItem[]) =>
   JSON.stringify(first) === JSON.stringify(second)
 
+const getAggregatedMetrics = (item: ContentItem) => {
+  const totals = {
+    sevenDayViews: 0,
+    currentViews: 0,
+    sevenDayLikes: 0,
+    currentLikes: 0,
+    sevenDayComments: 0,
+    currentComments: 0,
+  }
+
+  const perPlatform = allPlatforms.reduce((acc, platform) => {
+    const metrics = item.platformMetrics[platformKey[platform]]
+    if (!item.platforms.includes(platform)) {
+      acc[platform] = { ...metrics, sevenDayViews: 0, currentViews: 0, sevenDayLikes: 0, currentLikes: 0, sevenDayComments: 0, currentComments: 0 }
+      return acc
+    }
+
+    acc[platform] = metrics
+    totals.sevenDayViews += metrics.sevenDayViews
+    totals.currentViews += metrics.currentViews
+    totals.sevenDayLikes += metrics.sevenDayLikes
+    totals.currentLikes += metrics.currentLikes
+    totals.sevenDayComments += metrics.sevenDayComments
+    totals.currentComments += metrics.currentComments
+    return acc
+  }, {} as Record<Platform, PlatformMetrics>)
+
+  return { totals, perPlatform }
+}
+
 const computeGrowthRate = (item: ContentItem) => {
-  if (item.viewsDay7 <= 0) return 0
-  return (item.currentViews - item.viewsDay7) / item.viewsDay7
+  const { totals } = getAggregatedMetrics(item)
+  if (totals.sevenDayViews <= 0) return 0
+  return (totals.currentViews - totals.sevenDayViews) / totals.sevenDayViews
 }
 
 const daysSince = (dateString: string) => {
@@ -298,15 +325,16 @@ function App() {
   }
 
   const handleUpdateStats = async (item: ContentItem) => {
-    if (item.platform !== 'YouTube') {
+    if (!item.platforms.includes('YouTube')) {
       setStatusMessage({
         type: 'error',
-        text: 'Instagram 콘텐츠는 자동 업데이트가 비활성화되어 있습니다.',
+        text: 'YouTube가 선택된 콘텐츠만 자동 업데이트할 수 있습니다.',
       })
       return
     }
 
-    const videoId = getYouTubeVideoId(item.url)
+    const youtubeMetrics = item.platformMetrics.youtube
+    const videoId = getYouTubeVideoId(youtubeMetrics.url)
     if (!videoId) {
       setStatusMessage({
         type: 'error',
@@ -325,10 +353,17 @@ function App() {
         current.id === item.id
           ? {
               ...current,
-              currentViews: stats.currentViews,
-              currentLikes: stats.currentLikes,
-              currentComments: stats.currentComments,
-              lastUpdatedAt: updatedAt,
+              platformMetrics: {
+                ...current.platformMetrics,
+                youtube: {
+                  ...current.platformMetrics.youtube,
+                  currentViews: stats.currentViews,
+                  currentLikes: stats.currentLikes,
+                  currentComments: stats.currentComments,
+                  lastUpdatedAt: updatedAt,
+                  updateMode: 'auto',
+                },
+              },
             }
           : current,
       )
@@ -379,7 +414,11 @@ function App() {
     return sum / items.length
   }, [items])
   const currentTotalViews = useMemo(
-    () => items.reduce((sum, item) => sum + item.currentViews, 0),
+    () =>
+      items.reduce((sum, item) => {
+        const { totals } = getAggregatedMetrics(item)
+        return sum + totals.currentViews
+      }, 0),
     [items],
   )
   const longTrackingCount = useMemo(
@@ -391,15 +430,27 @@ function App() {
   )
 
   const platformChartData = useMemo(() => {
-    const grouped: Record<Platform, { total: number; count: number }> = {
-      YouTube: { total: 0, count: 0 },
-      Instagram: { total: 0, count: 0 },
-    }
+    const grouped = allPlatforms.reduce(
+      (acc, platform) => ({
+        ...acc,
+        [platform]: { total: 0, count: 0 },
+      }),
+      {} as Record<Platform, { total: number; count: number }>,
+    )
+
     items.forEach((item) => {
-      grouped[item.platform].total += computeGrowthRate(item)
-      grouped[item.platform].count += 1
+      allPlatforms.forEach((platform) => {
+        if (!item.platforms.includes(platform)) return
+        const metrics = item.platformMetrics[platformKey[platform]]
+        if (metrics.sevenDayViews > 0) {
+          const growth = (metrics.currentViews - metrics.sevenDayViews) / metrics.sevenDayViews
+          grouped[platform].total += growth
+          grouped[platform].count += 1
+        }
+      })
     })
-    return (Object.keys(grouped) as Platform[]).map((platform) => ({
+
+    return allPlatforms.map((platform) => ({
       platform,
       avgGrowth: grouped[platform].count
         ? parseFloat(((grouped[platform].total / grouped[platform].count) * 100).toFixed(1))
@@ -407,46 +458,24 @@ function App() {
     }))
   }, [items])
 
-  const chartData = useMemo(() => {
-    const grouped = new Map<
-      string,
-      {
-        title: string
-        sevenYoutube: number
-        sevenInstagram: number
-        currentYoutube: number
-        currentInstagram: number
-      }
-    >()
-
-    items.forEach((item) => {
-      const title = item.title || '무제'
-      if (!grouped.has(title)) {
-        grouped.set(title, {
-          title,
-          sevenYoutube: 0,
-          sevenInstagram: 0,
-          currentYoutube: 0,
-          currentInstagram: 0,
-        })
-      }
-
-      const entry = grouped.get(title)!
-      if (item.platform === 'YouTube') {
-        entry.sevenYoutube += item.viewsDay7
-        entry.currentYoutube += item.currentViews
-      } else {
-        entry.sevenInstagram += item.viewsDay7
-        entry.currentInstagram += item.currentViews
-      }
-    })
-
-    return Array.from(grouped.values()).map((entry) => ({
-      ...entry,
-      sevenTotal: entry.sevenYoutube + entry.sevenInstagram,
-      currentTotal: entry.currentYoutube + entry.currentInstagram,
-    }))
-  }, [items])
+  const chartData = useMemo(
+    () =>
+      items.map((item) => {
+        const { perPlatform, totals } = getAggregatedMetrics(item)
+        return {
+          title: item.contentName || '무제',
+          sevenYoutube: perPlatform.YouTube.sevenDayViews,
+          sevenInstagram: perPlatform.Instagram.sevenDayViews,
+          sevenTiktok: perPlatform.TikTok.sevenDayViews,
+          currentYoutube: perPlatform.YouTube.currentViews,
+          currentInstagram: perPlatform.Instagram.currentViews,
+          currentTiktok: perPlatform.TikTok.currentViews,
+          sevenTotal: totals.sevenDayViews,
+          currentTotal: totals.currentViews,
+        }
+      }),
+    [items],
+  )
 
   const formatTooltipValue = (value?: number) => (value !== undefined ? formatNumber(value) : '-')
 
@@ -463,43 +492,105 @@ function App() {
 
     const sevenYoutube = data.sevenYoutube ?? 0
     const sevenInstagram = data.sevenInstagram ?? 0
+    const sevenTiktok = data.sevenTiktok ?? 0
     const currentYoutube = data.currentYoutube ?? 0
     const currentInstagram = data.currentInstagram ?? 0
-    const sevenTotal = sevenYoutube + sevenInstagram
-    const currentTotal = currentYoutube + currentInstagram
+    const currentTiktok = data.currentTiktok ?? 0
+    const sevenTotal = sevenYoutube + sevenInstagram + sevenTiktok
+    const currentTotal = currentYoutube + currentInstagram + currentTiktok
 
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-900 shadow-lg">
         <p className="mb-2 font-semibold">{label}</p>
         <p className="text-[12px] text-slate-500">7일차 총 조회수: {formatTooltipValue(sevenTotal)}</p>
         <p className="text-[12px]">- YouTube: {formatTooltipValue(sevenYoutube)}</p>
-        <p className="text-[12px] mb-2">- Instagram: {formatTooltipValue(sevenInstagram)}</p>
+        <p className="text-[12px]">- Instagram: {formatTooltipValue(sevenInstagram)}</p>
+        <p className="text-[12px] mb-2">- TikTok: {formatTooltipValue(sevenTiktok)}</p>
         <p className="text-[12px] text-slate-500">현재 총 조회수: {formatTooltipValue(currentTotal)}</p>
         <p className="text-[12px]">- YouTube: {formatTooltipValue(currentYoutube)}</p>
         <p className="text-[12px]">- Instagram: {formatTooltipValue(currentInstagram)}</p>
+        <p className="text-[12px]">- TikTok: {formatTooltipValue(currentTiktok)}</p>
       </div>
     )
   }
 
   const handleFieldChange = (
-    field: keyof ContentItem,
-    value: string | number,
+    field: keyof Omit<ContentItem, 'platforms' | 'platformMetrics' | 'id'>,
+    value: string,
   ) => {
     setForm((prev) => ({
       ...prev,
-      [field]:
-        ['viewsDay7', 'likesDay7', 'commentsDay7', 'currentViews', 'currentLikes', 'currentComments'].includes(field)
-          ? Number(value)
-          : value,
+      [field]: value,
+    }))
+  }
+
+  const handlePlatformToggle = (platform: Platform) => {
+    setForm((prev) => {
+      const nextPlatforms = prev.platforms.includes(platform)
+        ? prev.platforms.filter((current) => current !== platform)
+        : [...prev.platforms, platform]
+
+      return {
+        ...prev,
+        platforms: nextPlatforms,
+      }
+    })
+  }
+
+  const handlePlatformMetricChange = (
+    platform: Platform,
+    field: keyof PlatformMetrics,
+    value: string | number,
+  ) => {
+    const key = platformKey[platform]
+    setForm((prev) => ({
+      ...prev,
+      platformMetrics: {
+        ...prev.platformMetrics,
+        [key]: {
+          ...prev.platformMetrics[key],
+          [field]:
+            ['sevenDayViews', 'currentViews', 'sevenDayLikes', 'currentLikes', 'sevenDayComments', 'currentComments'].includes(field)
+              ? Number(value)
+              : String(value),
+        },
+      },
     }))
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!form.title.trim() || !form.url.trim() || !form.influencer.trim()) return
+
+    if (!form.contentName.trim() || !form.influencerName.trim() || !form.campaignName.trim()) {
+      setStatusMessage({ type: 'error', text: '콘텐츠명, 인플루언서명, 캠페인명을 모두 입력해주세요.' })
+      return
+    }
+
+    if (!form.platforms.length) {
+      setStatusMessage({ type: 'error', text: '최소 하나 이상의 플랫폼을 선택해주세요.' })
+      return
+    }
+
+    for (const platform of form.platforms) {
+      const metrics = form.platformMetrics[platformKey[platform]]
+      if (!metrics.url.trim()) {
+        setStatusMessage({ type: 'error', text: `${platform} URL을 입력해주세요.` })
+        return
+      }
+    }
+
+    const sanitizedForm = {
+      ...form,
+      platforms: form.platforms,
+      platformMetrics: {
+        youtube: { ...form.platformMetrics.youtube },
+        instagram: { ...form.platformMetrics.instagram },
+        tiktok: { ...form.platformMetrics.tiktok },
+      },
+    }
 
     if (editingId) {
-      const updated = items.map((item) => (item.id === editingId ? { ...form, id: editingId } : item))
+      const updated = items.map((item) => (item.id === editingId ? { ...sanitizedForm, id: editingId } : item))
       setItems(updated)
       setEditingId(null)
       setForm({ ...formDefaults, publishDate: form.publishDate })
@@ -507,7 +598,7 @@ function App() {
     }
 
     const nextItem: ContentItem = {
-      ...form,
+      ...sanitizedForm,
       id: String(Date.now()),
     }
     setItems([nextItem, ...items])
@@ -533,7 +624,7 @@ function App() {
             <h1 className="mt-2 text-2xl font-semibold text-[#5a3b2e] sm:text-3xl">I.U Dashboard</h1>
             <p className="mt-1 text-xs font-semibold tracking-[0.12em] uppercase text-[#8b5b3a] sm:text-sm">Influencer Unit Performance Tracker</p>
             <p className="mt-2 max-w-full text-xs leading-5 text-[#7a6b5a] sm:whitespace-nowrap">
-              유튜브·인스타그램 콘텐츠의 누적 성과를 관리하고, 게시 후 7일차 기준 성과와 현재 성과를 비교합니다.
+              여러 플랫폼 콘텐츠의 누적 성과를 관리하고, 게시 후 7일차 기준 성과와 현재 성과를 비교합니다.
             </p>
           </div>
           <div className="rounded-3xl px-5 py-4 text-white shadow-lg sm:w-auto" style={{ background: 'var(--mn-primary)' }}>
@@ -569,7 +660,7 @@ function App() {
                 {editingId ? (
                   <div className="mt-3 flex items-center gap-3">
                     <span className="rounded-full bg-[#fff3e6] px-3 py-1 text-sm font-semibold text-[#8b5b3a]">현재 수정 중인 콘텐츠</span>
-                    <p className="text-sm text-[#7a6b5a]">현재 {form.title || '콘텐츠'} 수정 중입니다.</p>
+                    <p className="text-sm text-[#7a6b5a]">현재 {form.contentName || '콘텐츠'} 수정 중입니다.</p>
                   </div>
                 ) : null}
               </div>
@@ -591,40 +682,17 @@ function App() {
                 <label className="space-y-2 text-sm text-slate-700">
                   <span>콘텐츠명</span>
                   <input
-                    value={form.title}
-                    onChange={(e) => handleFieldChange('title', e.target.value)}
+                    value={form.contentName}
+                    onChange={(e) => handleFieldChange('contentName', e.target.value)}
                     className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                     placeholder="예: 여름 캠페인 하이라이트"
                   />
                 </label>
                 <label className="space-y-2 text-sm text-slate-700">
-                  <span>플랫폼</span>
-                  <select
-                    value={form.platform}
-                    onChange={(e) => handleFieldChange('platform', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
-                  >
-                    <option>YouTube</option>
-                    <option>Instagram</option>
-                  </select>
-                </label>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="space-y-2 text-sm text-slate-700">
-                  <span>URL</span>
-                  <input
-                    value={form.url}
-                    onChange={(e) => handleFieldChange('url', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
-                    placeholder="https://"
-                  />
-                </label>
-                <label className="space-y-2 text-sm text-slate-700">
                   <span>인플루언서명</span>
                   <input
-                    value={form.influencer}
-                    onChange={(e) => handleFieldChange('influencer', e.target.value)}
+                    value={form.influencerName}
+                    onChange={(e) => handleFieldChange('influencerName', e.target.value)}
                     className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                     placeholder="예: 채린"
                   />
@@ -635,8 +703,8 @@ function App() {
                 <label className="space-y-2 text-sm text-slate-700">
                   <span>캠페인명</span>
                   <input
-                    value={form.campaign}
-                    onChange={(e) => handleFieldChange('campaign', e.target.value)}
+                    value={form.campaignName}
+                    onChange={(e) => handleFieldChange('campaignName', e.target.value)}
                     className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
                     placeholder="예: 바캉스 스페셜"
                   />
@@ -652,71 +720,172 @@ function App() {
                 </label>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <label className="space-y-2 text-sm text-slate-700">
-                  <span>7일차 조회수</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.viewsDay7}
-                    onChange={(e) => handleFieldChange('viewsDay7', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
-                  />
-                </label>
-                <label className="space-y-2 text-sm text-slate-700">
-                  <span>7일차 좋아요</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.likesDay7}
-                    onChange={(e) => handleFieldChange('likesDay7', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
-                  />
-                </label>
-                <label className="space-y-2 text-sm text-slate-700">
-                  <span>7일차 댓글</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.commentsDay7}
-                    onChange={(e) => handleFieldChange('commentsDay7', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
-                  />
-                </label>
+              <div className="space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">미러링 플랫폼</p>
+                <div className="flex flex-wrap gap-2">
+                  {allPlatforms.map((platform) => {
+                    const selected = form.platforms.includes(platform)
+                    return (
+                      <button
+                        key={platform}
+                        type="button"
+                        onClick={() => handlePlatformToggle(platform)}
+                        className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                          selected
+                            ? 'border-[#5a3b2e] bg-[#5a3b2e] text-white'
+                            : 'border-slate-300 bg-white text-slate-700 hover:border-[#c9a17a] hover:bg-[#faf5ee]'
+                        }`}
+                      >
+                        {platform}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-[#7a6b5a]">YouTube는 자동 업데이트를 지원하며, Instagram/TikTok은 수동 입력 방식입니다.</p>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <label className="space-y-2 text-sm text-slate-700">
-                  <span>현재 조회수</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.currentViews}
-                    onChange={(e) => handleFieldChange('currentViews', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
-                  />
-                </label>
-                <label className="space-y-2 text-sm text-slate-700">
-                  <span>현재 좋아요</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.currentLikes}
-                    onChange={(e) => handleFieldChange('currentLikes', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
-                  />
-                </label>
-                <label className="space-y-2 text-sm text-slate-700">
-                  <span>현재 댓글</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.currentComments}
-                    onChange={(e) => handleFieldChange('currentComments', e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
-                  />
-                </label>
-              </div>
+              {form.platforms.map((platform) => {
+                const metrics = form.platformMetrics[platformKey[platform]]
+                return (
+                  <div key={platform} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-900">{platform} 성과 입력</h3>
+                        <p className="text-xs text-slate-600">
+                          {platform === 'YouTube'
+                            ? '자동 업데이트가 가능한 YouTube 플랫폼입니다.'
+                            : '수동 입력 기반 플랫폼입니다. 입력값을 덮어쓰지 않습니다.'}
+                        </p>
+                      </div>
+                      {platform === 'YouTube' ? (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!form.platforms.includes('YouTube')) return
+                            const videoId = getYouTubeVideoId(metrics.url)
+                            if (!videoId) {
+                              setStatusMessage({
+                                type: 'error',
+                                text: 'YouTube URL에서 videoId를 추출할 수 없습니다. 올바른 URL을 입력해주세요.',
+                              })
+                              return
+                            }
+
+                            setUpdatingId('form')
+                            setStatusMessage(null)
+                            try {
+                              const stats = await fetchYoutubeStatistics(videoId)
+                              const updatedAt = new Date().toISOString()
+                              setForm((prev) => ({
+                                ...prev,
+                                platformMetrics: {
+                                  ...prev.platformMetrics,
+                                  youtube: {
+                                    ...prev.platformMetrics.youtube,
+                                    currentViews: stats.currentViews,
+                                    currentLikes: stats.currentLikes,
+                                    currentComments: stats.currentComments,
+                                    lastUpdatedAt: updatedAt,
+                                    updateMode: 'auto',
+                                  },
+                                },
+                              }))
+                              setStatusMessage({
+                                type: 'success',
+                                text: `YouTube 성과가 최신값으로 업데이트되었습니다. (${new Date(updatedAt).toLocaleString('ko-KR')})`,
+                              })
+                            } catch (error) {
+                              const message = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+                              setStatusMessage({ type: 'error', text: message })
+                            } finally {
+                              setUpdatingId(null)
+                            }
+                          }}
+                          disabled={updatingId !== null && updatingId !== 'form'}
+                          className="inline-flex items-center justify-center rounded-2xl border border-[#5a3b2e] bg-[#5a3b2e] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#462a20] disabled:cursor-not-allowed disabled:bg-slate-300"
+                        >
+                          성과 업데이트
+                        </button>
+                      ) : (
+                        <span className="inline-flex rounded-full bg-[#fff4dc] px-3 py-1 text-xs font-semibold text-[#8b5b3a]">수동 입력</span>
+                      )}
+                    </div>
+
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <label className="space-y-2 text-sm text-slate-700">
+                        <span>URL</span>
+                        <input
+                          type="text"
+                          value={metrics.url}
+                          onChange={(e) => handlePlatformMetricChange(platform, 'url', e.target.value)}
+                          className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
+                          placeholder="https://"
+                        />
+                      </label>
+                      <label className="space-y-2 text-sm text-slate-700">
+                        <span>7일차 조회수</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={metrics.sevenDayViews}
+                          onChange={(e) => handlePlatformMetricChange(platform, 'sevenDayViews', e.target.value)}
+                          className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
+                        />
+                      </label>
+                      <label className="space-y-2 text-sm text-slate-700">
+                        <span>현재 조회수</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={metrics.currentViews}
+                          onChange={(e) => handlePlatformMetricChange(platform, 'currentViews', e.target.value)}
+                          className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
+                        />
+                      </label>
+                      <label className="space-y-2 text-sm text-slate-700">
+                        <span>7일차 좋아요</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={metrics.sevenDayLikes}
+                          onChange={(e) => handlePlatformMetricChange(platform, 'sevenDayLikes', e.target.value)}
+                          className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
+                        />
+                      </label>
+                      <label className="space-y-2 text-sm text-slate-700">
+                        <span>현재 좋아요</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={metrics.currentLikes}
+                          onChange={(e) => handlePlatformMetricChange(platform, 'currentLikes', e.target.value)}
+                          className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
+                        />
+                      </label>
+                      <label className="space-y-2 text-sm text-slate-700">
+                        <span>7일차 댓글</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={metrics.sevenDayComments}
+                          onChange={(e) => handlePlatformMetricChange(platform, 'sevenDayComments', e.target.value)}
+                          className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
+                        />
+                      </label>
+                      <label className="space-y-2 text-sm text-slate-700">
+                        <span>현재 댓글</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={metrics.currentComments}
+                          onChange={(e) => handlePlatformMetricChange(platform, 'currentComments', e.target.value)}
+                          className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )
+              })}
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-[#7a6b5a]">입력 후 ‘콘텐츠 등록’ 버튼으로 화면에 반영하고, 변경사항 저장을 눌러 확정하세요.</p>
@@ -781,14 +950,19 @@ function App() {
                   <XAxis dataKey="title" tick={{ fontSize: 12 }} interval={0} angle={-25} textAnchor="end" height={80} />
                   <YAxis tickFormatter={(value) => `${value / 1000}k`} axisLine={false} tickLine={false} />
                   <Tooltip content={renderChartTooltip} />
-                  <Legend payload={[
-                    { value: 'YouTube', type: 'square', color: '#5a3b2e' },
-                    { value: 'Instagram', type: 'square', color: '#8b5b3a' },
-                  ]} />
-                  <Bar dataKey="sevenYoutube" name="YouTube" stackId="7day" fill="#5a3b2e" legendType="none" />
-                  <Bar dataKey="sevenInstagram" name="Instagram" stackId="7day" fill="#8b5b3a" legendType="none" />
-                  <Bar dataKey="currentYoutube" name="YouTube" stackId="current" fill="#3c2c23" legendType="none" />
-                  <Bar dataKey="currentInstagram" name="Instagram" stackId="current" fill="#b58b6f" legendType="none" />
+                  <Legend
+                    payload={[
+                      { value: 'YouTube', type: 'square', color: '#5a3b2e' },
+                      { value: 'Instagram', type: 'square', color: '#8b5b3a' },
+                      { value: 'TikTok', type: 'square', color: '#6f5f55' },
+                    ]}
+                  />
+                  <Bar dataKey="sevenYoutube" name="YouTube 7일차" stackId="seven" fill="#5a3b2e" legendType="none" />
+                  <Bar dataKey="sevenInstagram" name="Instagram 7일차" stackId="seven" fill="#8b5b3a" legendType="none" />
+                  <Bar dataKey="sevenTiktok" name="TikTok 7일차" stackId="seven" fill="#6f5f55" legendType="none" />
+                  <Bar dataKey="currentYoutube" name="YouTube 현재" stackId="current" fill="#3c2c23" legendType="none" />
+                  <Bar dataKey="currentInstagram" name="Instagram 현재" stackId="current" fill="#b58b6f" legendType="none" />
+                  <Bar dataKey="currentTiktok" name="TikTok 현재" stackId="current" fill="#4b3c34" legendType="none" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -852,37 +1026,78 @@ function App() {
                 <tbody>
                   {items.map((item) => {
                     const growth = computeGrowthRate(item)
+                    const { totals, perPlatform } = getAggregatedMetrics(item)
+                    const latestTimestamp = [
+                      item.platformMetrics.youtube.lastUpdatedAt,
+                      item.platformMetrics.instagram.lastUpdatedAt,
+                      item.platformMetrics.tiktok.lastUpdatedAt,
+                    ]
+                      .filter(Boolean)
+                      .map((value) => new Date(value).getTime())
+                      .filter((timestamp) => !Number.isNaN(timestamp))
+                      .sort((a, b) => b - a)[0]
+                    const latestUpdatedAt = latestTimestamp ? new Date(latestTimestamp).toISOString() : ''
+                    const primaryUrl = item.platforms.length
+                      ? item.platformMetrics[platformKey[item.platforms[0]]].url
+                      : '#'
                     return (
                       <tr key={item.id} className="border-t border-slate-200">
                         <td className="px-4 py-4 align-top text-slate-900 max-w-[220px] min-w-0">
-                          <a href={item.url} target="_blank" rel="noreferrer" className="block max-w-full truncate font-medium text-slate-900 hover:text-[#5a3b2e]">
-                            {item.title}
+                          <a href={primaryUrl} target="_blank" rel="noreferrer" className="block max-w-full truncate font-medium text-slate-900 hover:text-[#5a3b2e]">
+                            {item.contentName}
                           </a>
                         </td>
-                        <td className="px-4 py-4 align-top">
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold ${
-                              item.platform === 'YouTube'
-                                ? 'platform-youtube'
-                                : 'platform-instagram'
-                            }`}
-                          >
-                            {item.platform}
-                          </span>
+                        <td className="px-4 py-4 align-top space-y-2">
+                          <div className="flex flex-wrap gap-2">
+                            {item.platforms.map((platform) => (
+                              <span
+                                key={platform}
+                                className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold ${
+                                  platform === 'YouTube'
+                                    ? 'platform-youtube'
+                                    : platform === 'Instagram'
+                                    ? 'platform-instagram'
+                                    : 'platform-tiktok'
+                                }`}
+                              >
+                                {platform}
+                              </span>
+                            ))}
+                          </div>
                         </td>
                         <td className="px-4 py-4 align-top text-slate-700 max-w-[140px] min-w-0">
-                          <div className="max-w-full truncate">{item.influencer}</div>
+                          <div className="max-w-full truncate">{item.influencerName}</div>
                         </td>
                         <td className="px-4 py-4 align-top text-slate-700 max-w-[160px] min-w-0">
-                          <div className="max-w-full truncate">{item.campaign}</div>
+                          <div className="max-w-full truncate">{item.campaignName}</div>
                         </td>
                         <td className="px-4 py-4 align-top text-slate-700 whitespace-nowrap">{item.publishDate}</td>
-                        <td className="px-4 py-4 align-top text-slate-700 text-right">{formatNumber(item.viewsDay7)}</td>
-                        <td className="px-4 py-4 align-top text-slate-700 text-right">{formatNumber(item.currentViews)}</td>
+                        <td
+                          className="px-4 py-4 align-top text-slate-700 text-right"
+                          title={`YouTube: ${formatNumber(perPlatform.YouTube.sevenDayViews)}\nInstagram: ${formatNumber(perPlatform.Instagram.sevenDayViews)}\nTikTok: ${formatNumber(perPlatform.TikTok.sevenDayViews)}`}
+                        >
+                          {formatNumber(totals.sevenDayViews)}
+                        </td>
+                        <td
+                          className="px-4 py-4 align-top text-slate-700 text-right"
+                          title={`YouTube: ${formatNumber(perPlatform.YouTube.currentViews)}\nInstagram: ${formatNumber(perPlatform.Instagram.currentViews)}\nTikTok: ${formatNumber(perPlatform.TikTok.currentViews)}`}
+                        >
+                          {formatNumber(totals.currentViews)}
+                        </td>
                         <td className="px-4 py-4 align-top text-slate-700 text-right">{(growth * 100).toFixed(1)}%</td>
-                        <td className="px-4 py-4 align-top text-slate-700 text-right">{formatNumber(item.currentLikes)}</td>
-                        <td className="px-4 py-4 align-top text-slate-700 text-right">{formatNumber(item.currentComments)}</td>
-                        <td className="px-4 py-4 align-top text-slate-700 whitespace-nowrap">{formatUpdated(item.lastUpdatedAt)}</td>
+                        <td
+                          className="px-4 py-4 align-top text-slate-700 text-right"
+                          title={`YouTube: ${formatNumber(perPlatform.YouTube.currentLikes)}\nInstagram: ${formatNumber(perPlatform.Instagram.currentLikes)}\nTikTok: ${formatNumber(perPlatform.TikTok.currentLikes)}`}
+                        >
+                          {formatNumber(totals.currentLikes)}
+                        </td>
+                        <td
+                          className="px-4 py-4 align-top text-slate-700 text-right"
+                          title={`YouTube: ${formatNumber(perPlatform.YouTube.currentComments)}\nInstagram: ${formatNumber(perPlatform.Instagram.currentComments)}\nTikTok: ${formatNumber(perPlatform.TikTok.currentComments)}`}
+                        >
+                          {formatNumber(totals.currentComments)}
+                        </td>
+                        <td className="px-4 py-4 align-top text-slate-700 whitespace-nowrap">{formatUpdated(latestUpdatedAt)}</td>
                         <td className="px-4 py-4 align-top">
                           <div
                             className="relative inline-flex"
@@ -908,9 +1123,9 @@ function App() {
                                     handleUpdateStats(item)
                                     setOpenActionId(null)
                                   }}
-                                  disabled={item.platform !== 'YouTube' || (updatingId !== null && updatingId !== item.id)}
+                                  disabled={!item.platforms.includes('YouTube') || (updatingId !== null && updatingId !== item.id)}
                                   className={`w-full rounded-xl px-3 py-2 text-left text-[12px] font-semibold transition ${
-                                    item.platform !== 'YouTube'
+                                    !item.platforms.includes('YouTube')
                                       ? 'cursor-not-allowed bg-slate-50 text-slate-400'
                                       : 'text-[#5a3b2e] hover:bg-[#f7e7d9]'
                                   }`}
