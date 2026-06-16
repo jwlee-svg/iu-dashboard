@@ -198,6 +198,9 @@ const parseStoredItems = (): ContentItem[] => {
   return []
 }
 
+const areItemsEqual = (first: ContentItem[], second: ContentItem[]) =>
+  JSON.stringify(first) === JSON.stringify(second)
+
 const computeGrowthRate = (item: ContentItem) => {
   if (item.viewsDay7 <= 0) return 0
   return (item.currentViews - item.viewsDay7) / item.viewsDay7
@@ -218,7 +221,9 @@ const getStatus = (item: ContentItem) => {
 const formatNumber = (value: number) => value.toLocaleString('ko-KR')
 
 function App() {
-  const [items, setItems] = useState<ContentItem[]>(() => parseStoredItems())
+  const initialItems = parseStoredItems()
+  const [items, setItems] = useState<ContentItem[]>(initialItems)
+  const [persistedItems, setPersistedItems] = useState<ContentItem[]>(initialItems)
   const [form, setForm] = useState<ContentItem>(formDefaults)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -226,20 +231,34 @@ function App() {
   const [openActionId, setOpenActionId] = useState<string | null>(null)
   const formRef = useRef<HTMLDivElement | null>(null)
 
-  const saveItems = (nextItems: ContentItem[]) => {
-    setItems(nextItems)
+  const hasUnsavedChanges = !areItemsEqual(items, persistedItems)
+
+  const persistItems = (nextItems: ContentItem[]) => {
     window.localStorage.setItem(storageKey, JSON.stringify(nextItems))
+    setPersistedItems(nextItems)
   }
 
-  useEffect(() => {
-    window.localStorage.setItem(storageKey, JSON.stringify(items))
-  }, [items])
+  const handleSaveChanges = () => {
+    persistItems(items)
+    setStatusMessage({ type: 'success', text: '변경사항이 저장되었습니다.' })
+  }
 
   useEffect(() => {
     if (!statusMessage) return
     const timer = window.setTimeout(() => setStatusMessage(null), 5000)
     return () => window.clearTimeout(timer)
   }, [statusMessage])
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
 
   const getYouTubeVideoId = (url: string) => {
     const normalized = url.trim()
@@ -313,7 +332,7 @@ function App() {
             }
           : current,
       )
-      saveItems(updatedItems)
+      setItems(updatedItems)
       setStatusMessage({
         type: 'success',
         text: `YouTube 성과가 최신값으로 업데이트되었습니다. (${new Date(updatedAt).toLocaleString('ko-KR')})`,
@@ -334,7 +353,7 @@ function App() {
   }
 
   const handleDelete = (itemId: string) => {
-    saveItems(items.filter((item) => item.id !== itemId))
+    setItems(items.filter((item) => item.id !== itemId))
     if (editingId === itemId) {
       setEditingId(null)
       setForm(formDefaults)
@@ -342,13 +361,13 @@ function App() {
   }
 
   const handleResetSample = () => {
-    saveItems(sampleData)
+    setItems(sampleData)
     setEditingId(null)
     setForm(formDefaults)
   }
 
   const handleClearAll = () => {
-    saveItems([])
+    setItems([])
     setEditingId(null)
     setForm({ ...formDefaults, publishDate: new Date().toISOString().slice(0, 10) })
   }
@@ -481,7 +500,7 @@ function App() {
 
     if (editingId) {
       const updated = items.map((item) => (item.id === editingId ? { ...form, id: editingId } : item))
-      saveItems(updated)
+      setItems(updated)
       setEditingId(null)
       setForm({ ...formDefaults, publishDate: form.publishDate })
       return
@@ -491,7 +510,7 @@ function App() {
       ...form,
       id: String(Date.now()),
     }
-    saveItems([nextItem, ...items])
+    setItems([nextItem, ...items])
     setForm({ ...formDefaults, publishDate: form.publishDate })
   }
 
@@ -522,6 +541,12 @@ function App() {
             <p className="mt-2 text-3xl font-semibold">{totalItems}</p>
           </div>
         </header>
+
+        {hasUnsavedChanges ? (
+          <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            저장되지 않은 변경사항이 있습니다.
+          </div>
+        ) : null}
 
         {statusMessage ? (
           <div
@@ -694,7 +719,7 @@ function App() {
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-[#7a6b5a]">입력 후 ‘콘텐츠 등록’ 버튼을 클릭하면 즉시 저장됩니다.</p>
+                <p className="text-sm text-[#7a6b5a]">입력 후 ‘콘텐츠 등록’ 버튼으로 화면에 반영하고, 변경사항 저장을 눌러 확정하세요.</p>
                 <button
                   type="submit"
                   className="inline-flex items-center justify-center rounded-2xl mn-primary-btn px-5 py-3 text-sm font-semibold transition hover:opacity-95"
@@ -792,6 +817,16 @@ function App() {
                   className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 mn-danger-btn"
                 >
                   전체 데이터 삭제
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveChanges}
+                  disabled={!hasUnsavedChanges}
+                  className={`rounded-2xl px-4 py-2 text-sm font-semibold text-white transition ${
+                    hasUnsavedChanges ? 'bg-[#5a3b2e] hover:bg-[#462a20]' : 'cursor-not-allowed bg-slate-300 text-slate-500'
+                  }`}
+                >
+                  변경사항 저장
                 </button>
               </div>
             </div>
