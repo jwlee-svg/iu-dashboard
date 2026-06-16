@@ -940,7 +940,7 @@ function App() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">콘텐츠별 7일차 vs 현재 조회수 비교</h2>
-                <p className="mt-1 text-sm text-slate-600">각 콘텐츠별로 7일차와 현재 총 조회수를 플랫폼별 구성으로 함께 보여줍니다.</p>
+                <p className="mt-1 text-sm text-slate-600">콘텐츠 각각에 대해 7일차 총 조회수(좌측 막대)와 현재 총 조회수(우측 막대)를 플랫폼별 구성으로 비교합니다.</p>
               </div>
             </div>
             <div className="mt-6 h-[420px] w-full">
@@ -957,12 +957,12 @@ function App() {
                       { value: 'TikTok', type: 'square', color: '#6f5f55' },
                     ]}
                   />
-                  <Bar dataKey="sevenYoutube" name="YouTube 7일차" stackId="seven" fill="#5a3b2e" legendType="none" />
-                  <Bar dataKey="sevenInstagram" name="Instagram 7일차" stackId="seven" fill="#8b5b3a" legendType="none" />
-                  <Bar dataKey="sevenTiktok" name="TikTok 7일차" stackId="seven" fill="#6f5f55" legendType="none" />
-                  <Bar dataKey="currentYoutube" name="YouTube 현재" stackId="current" fill="#3c2c23" legendType="none" />
-                  <Bar dataKey="currentInstagram" name="Instagram 현재" stackId="current" fill="#b58b6f" legendType="none" />
-                  <Bar dataKey="currentTiktok" name="TikTok 현재" stackId="current" fill="#4b3c34" legendType="none" />
+                  <Bar dataKey="sevenYoutube" name="YouTube" stackId="seven" fill="#5a3b2e" legendType="none" />
+                  <Bar dataKey="sevenInstagram" name="Instagram" stackId="seven" fill="#8b5b3a" legendType="none" />
+                  <Bar dataKey="sevenTiktok" name="TikTok" stackId="seven" fill="#6f5f55" legendType="none" />
+                  <Bar dataKey="currentYoutube" name="YouTube" stackId="current" fill="#5a3b2e" legendType="none" />
+                  <Bar dataKey="currentInstagram" name="Instagram" stackId="current" fill="#8b5b3a" legendType="none" />
+                  <Bar dataKey="currentTiktok" name="TikTok" stackId="current" fill="#6f5f55" legendType="none" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
