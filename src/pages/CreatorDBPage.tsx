@@ -142,6 +142,9 @@ export default function CreatorDBPage() {
   const [sheetLoading, setSheetLoading] = useState(false)
   const [sheetError, setSheetError] = useState('')
 
+  const [bulkUpdating, setBulkUpdating] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null)
+
   const hasUnsaved = JSON.stringify(creators) !== JSON.stringify(savedCreators)
 
   useEffect(() => {
@@ -275,21 +278,25 @@ export default function CreatorDBPage() {
     setDeleteTarget(null)
   }
 
-  const fetchYtSubs = async (creator: Creator) => {
+  const fetchYtChannelSubs = async (creator: Creator): Promise<number> => {
     const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY
-    if (!apiKey) { setStatus({ type: 'error', text: 'YouTube API 키가 없습니다.' }); return }
+    if (!apiKey) throw new Error('YouTube API 키가 없습니다.')
     const match = creator.ytUrl.match(/(?:youtube\.com\/@|youtube\.com\/channel\/|youtu\.be\/)([^/?&\s]+)/i)
-    if (!match) { setStatus({ type: 'error', text: 'YouTube URL을 확인하세요.' }); return }
+    if (!match) throw new Error('YouTube URL을 확인하세요.')
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/channels?part=statistics&forHandle=${match[1]}&key=${apiKey}`
+    )
+    if (!res.ok) throw new Error('API 오류')
+    const data = await res.json()
+    const subs = Number(data.items?.[0]?.statistics?.subscriberCount ?? 0)
+    if (!subs) throw new Error('구독자 정보를 가져올 수 없습니다.')
+    return subs
+  }
 
+  const fetchYtSubs = async (creator: Creator) => {
     setUpdatingId(creator.creatorId)
     try {
-      const res = await fetch(
-        `https://www.googleapis.com/youtube/v3/channels?part=statistics&forHandle=${match[1]}&key=${apiKey}`
-      )
-      if (!res.ok) throw new Error('API 오류')
-      const data = await res.json()
-      const subs = Number(data.items?.[0]?.statistics?.subscriberCount ?? 0)
-      if (!subs) throw new Error('구독자 정보를 가져올 수 없습니다.')
+      const subs = await fetchYtChannelSubs(creator)
       const today = new Date().toISOString().slice(0, 10)
       setCreators((prev) =>
         prev.map((c) => c.creatorId === creator.creatorId ? { ...c, ytSubscribers: subs, ytLastUpdated: today } : c)
@@ -300,6 +307,37 @@ export default function CreatorDBPage() {
     } finally {
       setUpdatingId(null)
     }
+  }
+
+  const handleBulkUpdateYt = async () => {
+    const targets = creators.filter((c) => /(?:youtube\.com\/@|youtube\.com\/channel\/|youtu\.be\/)/i.test(c.ytUrl))
+    if (!targets.length) {
+      setStatus({ type: 'error', text: 'YouTube 링크가 있는 크리에이터가 없습니다.' })
+      return
+    }
+    setBulkUpdating(true)
+    setBulkProgress({ done: 0, total: targets.length })
+    const today = new Date().toISOString().slice(0, 10)
+    let success = 0
+    let failed = 0
+    for (const creator of targets) {
+      try {
+        const subs = await fetchYtChannelSubs(creator)
+        setCreators((prev) =>
+          prev.map((c) => c.creatorId === creator.creatorId ? { ...c, ytSubscribers: subs, ytLastUpdated: today } : c)
+        )
+        success += 1
+      } catch {
+        failed += 1
+      }
+      setBulkProgress((prev) => (prev ? { done: prev.done + 1, total: prev.total } : null))
+    }
+    setBulkUpdating(false)
+    setBulkProgress(null)
+    setStatus({
+      type: success ? 'success' : 'error',
+      text: `YouTube 구독자 일괄 업데이트 완료: 성공 ${success}건 · 실패 ${failed}건 (변경사항 저장을 눌러야 반영됩니다)`,
+    })
   }
 
   const toggleTag = <T extends string>(arr: T[], val: T): T[] =>
@@ -320,6 +358,14 @@ export default function CreatorDBPage() {
                 className="rounded-2xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-[#5a3b2e] transition hover:bg-[#f6ead8]"
               >
                 구글시트 불러오기
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkUpdateYt}
+                disabled={bulkUpdating}
+                className="rounded-2xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-[#5a3b2e] transition hover:bg-[#f6ead8] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {bulkUpdating && bulkProgress ? `YouTube 업데이트 중... (${bulkProgress.done}/${bulkProgress.total})` : 'YouTube 구독자 일괄 업데이트'}
               </button>
               <button
                 type="button"
