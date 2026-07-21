@@ -171,8 +171,10 @@ export default function CreatorDBPage() {
       const { merged, added, updated } = mergeCreatorsById(creators, incoming)
       localStorage.setItem(SHEET_URL_KEY, sheetUrl.trim())
       setCreators(merged)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged))
+      setSavedCreators(merged)
       setShowSheetModal(false)
-      setStatus({ type: 'success', text: `구글시트에서 불러왔습니다. 신규 ${added}건 · 업데이트 ${updated}건 (변경사항 저장을 눌러야 반영됩니다)` })
+      setStatus({ type: 'success', text: `구글시트에서 불러와 저장했습니다. 신규 ${added}건 · 업데이트 ${updated}건` })
     } catch (e) {
       setSheetError(e instanceof Error ? e.message : '구글시트를 불러오지 못했습니다.')
     } finally {
@@ -320,23 +322,25 @@ export default function CreatorDBPage() {
     const today = new Date().toISOString().slice(0, 10)
     let success = 0
     let failed = 0
+    let working = creators
     for (const creator of targets) {
       try {
         const subs = await fetchYtChannelSubs(creator)
-        setCreators((prev) =>
-          prev.map((c) => c.creatorId === creator.creatorId ? { ...c, ytSubscribers: subs, ytLastUpdated: today } : c)
-        )
+        working = working.map((c) => c.creatorId === creator.creatorId ? { ...c, ytSubscribers: subs, ytLastUpdated: today } : c)
+        setCreators(working)
         success += 1
       } catch {
         failed += 1
       }
       setBulkProgress((prev) => (prev ? { done: prev.done + 1, total: prev.total } : null))
     }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(working))
+    setSavedCreators(working)
     setBulkUpdating(false)
     setBulkProgress(null)
     setStatus({
       type: success ? 'success' : 'error',
-      text: `YouTube 구독자 일괄 업데이트 완료: 성공 ${success}건 · 실패 ${failed}건 (변경사항 저장을 눌러야 반영됩니다)`,
+      text: `YouTube 구독자 일괄 업데이트 완료 및 저장: 성공 ${success}건 · 실패 ${failed}건`,
     })
   }
 
