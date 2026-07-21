@@ -96,10 +96,17 @@ const addDays = (dateStr: string, days: number) => {
   return d.toISOString().slice(0, 10)
 }
 
+// 네이버 데이터랩은 아직 집계되지 않은 미래/당일 데이터를 요청하면 400 오류를 낸다.
+const maxTrendEndDate = () => addDays(new Date().toISOString().slice(0, 10), -1)
+const clampToMaxEndDate = (date: string) => {
+  const max = maxTrendEndDate()
+  return date > max ? max : date
+}
+
 const computePeriodFromPreset = (publishDate: string, preset: PeriodPreset) => {
-  if (preset === '직접설정') return { startDate: publishDate, endDate: publishDate }
+  if (preset === '직접설정') return { startDate: publishDate, endDate: clampToMaxEndDate(publishDate) }
   const days = PERIOD_PRESET_DAYS[preset]
-  return { startDate: addDays(publishDate, -days), endDate: addDays(publishDate, days) }
+  return { startDate: addDays(publishDate, -days), endDate: clampToMaxEndDate(addDays(publishDate, days)) }
 }
 
 const pivotTrendData = (trendData: TrendDataPoint[]) => {
@@ -348,13 +355,17 @@ export default function SearchTrendPage() {
     }
     setIsUpdating(true)
     try {
+      const endDate = clampToMaxEndDate(activeTrend.endDate)
       const trendData = await fetchNaverTrendData({
         keywords: activeTrend.keywords,
         startDate: activeTrend.startDate,
-        endDate: activeTrend.endDate,
+        endDate,
         device: activeTrend.device,
         publishDate: activeContent.publishDate,
       })
+      if (endDate !== activeTrend.endDate) {
+        updateActiveTrend((t) => ({ ...t, endDate }))
+      }
       updateActiveTrend((t) => ({ ...t, trendData, lastUpdatedAt: new Date().toISOString() }))
       setStatusMsg({ type: 'success', text: '네이버 트렌드 데이터가 업데이트되었습니다.' })
     } catch (e) {
@@ -587,6 +598,7 @@ export default function SearchTrendPage() {
                       <input
                         type="date"
                         value={activeTrend.endDate}
+                        max={maxTrendEndDate()}
                         onChange={(e) => updateActiveTrend((t) => ({ ...t, endDate: e.target.value }))}
                         className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 outline-none focus:border-[#d4a373]"
                       />
