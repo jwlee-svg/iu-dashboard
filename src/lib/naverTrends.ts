@@ -70,22 +70,19 @@ export function generateMockTrendData({ keywords, startDate, endDate, device, pu
 /**
  * 네이버 데이터랩 검색어 트렌드 데이터를 가져옵니다.
  *
- * TODO: Vercel serverless function에서 Naver DataLab API 호출 예정
- * NAVER_CLIENT_ID / NAVER_CLIENT_SECRET은 절대 프론트엔드에 포함하지 않는다.
- * 실제 연동 시 이 함수 내부만 아래와 같이 교체하면 된다:
- *
- *   const res = await fetch('/api/naver-trends', {
- *     method: 'POST',
- *     headers: { 'Content-Type': 'application/json' },
- *     body: JSON.stringify(params),
- *   })
- *   if (!res.ok) throw new Error('네이버 트렌드 데이터를 가져오지 못했습니다.')
- *   return (await res.json()) as TrendDataPoint[]
- *
- * /api/naver-trends 는 서버(Vercel serverless function 등)에서 NAVER_CLIENT_ID /
- * NAVER_CLIENT_SECRET을 사용해 데이터랩 API를 호출하고 결과만 응답한다.
+ * 실제 호출은 /api/naver-trends (Vercel serverless function)에서 처리하며,
+ * NAVER_CLIENT_ID / NAVER_CLIENT_SECRET은 서버에만 존재하고 프론트엔드에는 노출되지 않는다.
  */
 export async function fetchNaverTrendData(params: FetchTrendParams): Promise<TrendDataPoint[]> {
-  // MVP: 실제 API 호출 대신 mock 데이터로 동작한다.
-  return generateMockTrendData(params)
+  const { keywords, startDate, endDate, device } = params
+  const res = await fetch('/api/naver-trends', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keywords, startDate, endDate, device }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error ?? '네이버 트렌드 데이터를 가져오지 못했습니다.')
+  }
+  return (await res.json()) as TrendDataPoint[]
 }
