@@ -4,7 +4,7 @@ import type { Creator } from '../types/creator'
 import { AFFECTION_COLORS, AFFECTION_OPTIONS, calcInfluence, formatSubs } from '../types/creator'
 import type { SponsorshipProject } from '../types/sponsorship'
 import { PROJECT_TYPE_COLOR, STATUS_COLOR } from '../types/sponsorship'
-import { fetchCreatorsFromSheet, mergeCreatorsById } from '../lib/sheetSync'
+import { fetchCreatorsFromSheet, mergeCreatorsById, pushCreatorToSheet } from '../lib/sheetSync'
 
 const STORAGE_KEY = 'iu-dashboard-creators'
 const SHEET_URL_KEY = 'iu-dashboard-creators-sheet-url'
@@ -318,19 +318,35 @@ export default function CreatorDBPage() {
     setShowModal(true)
   }
 
-  const submitForm = () => {
+  const submitForm = async () => {
     if (!editForm.name.trim()) {
       setStatus({ type: 'error', text: '크리에이터명을 입력하세요.' })
       return
     }
-    if (editingId) {
-      setCreators((prev) => prev.map((c) => (c.creatorId === editingId ? { ...editForm } : c)))
+    const isNew = !editingId
+    const localCreator: Creator = isNew
+      ? { ...editForm, creatorId: `cr_${String(creators.length + 1).padStart(4, '0')}` }
+      : { ...editForm }
+
+    if (isNew) {
+      setCreators((prev) => [localCreator, ...prev])
     } else {
-      const newId = `cr_${String(creators.length + 1).padStart(4, '0')}`
-      setCreators((prev) => [{ ...editForm, creatorId: newId }, ...prev])
+      setCreators((prev) => prev.map((c) => (c.creatorId === editingId ? localCreator : c)))
     }
     setShowModal(false)
     setEditingId(null)
+
+    if (sheetUrl.trim()) {
+      try {
+        const assignedId = await pushCreatorToSheet(sheetUrl.trim(), localCreator)
+        if (assignedId !== localCreator.creatorId) {
+          setCreators((prev) => prev.map((c) => (c.creatorId === localCreator.creatorId ? { ...c, creatorId: assignedId } : c)))
+        }
+        setStatus({ type: 'success', text: '구글시트에도 반영했습니다.' })
+      } catch (e) {
+        setStatus({ type: 'error', text: e instanceof Error ? `구글시트 저장 실패: ${e.message}` : '구글시트 저장 실패' })
+      }
+    }
   }
 
   const confirmDelete = (id: string) => setDeleteTarget(id)
@@ -385,10 +401,12 @@ export default function CreatorDBPage() {
     try {
       const subs = await fetchYtChannelSubs(creator)
       const today = new Date().toISOString().slice(0, 10)
-      setCreators((prev) =>
-        prev.map((c) => c.creatorId === creator.creatorId ? { ...c, ytSubscribers: subs, ytLastUpdated: today } : c)
-      )
+      const updated = { ...creator, ytSubscribers: subs, ytLastUpdated: today }
+      setCreators((prev) => prev.map((c) => (c.creatorId === creator.creatorId ? updated : c)))
       setStatus({ type: 'success', text: `${creator.name} 구독자 업데이트: ${formatSubs(subs)}` })
+      if (sheetUrl.trim()) {
+        pushCreatorToSheet(sheetUrl.trim(), updated).catch(() => {})
+      }
     } catch (e) {
       setStatus({ type: 'error', text: e instanceof Error ? e.message : '오류 발생' })
     } finally {
@@ -411,9 +429,13 @@ export default function CreatorDBPage() {
     for (const creator of targets) {
       try {
         const subs = await fetchYtChannelSubs(creator)
-        working = working.map((c) => c.creatorId === creator.creatorId ? { ...c, ytSubscribers: subs, ytLastUpdated: today } : c)
+        const updated = { ...creator, ytSubscribers: subs, ytLastUpdated: today }
+        working = working.map((c) => (c.creatorId === creator.creatorId ? updated : c))
         setCreators(working)
         success += 1
+        if (sheetUrl.trim()) {
+          pushCreatorToSheet(sheetUrl.trim(), updated).catch(() => {})
+        }
       } catch {
         failed += 1
       }
