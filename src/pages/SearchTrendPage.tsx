@@ -358,7 +358,7 @@ export default function SearchTrendPage() {
         publishDate: activeContent.publishDate,
       })
       updateActiveTrend((t) => ({ ...t, trendData, lastUpdatedAt: new Date().toISOString() }))
-      setStatusMsg({ type: 'success', text: '네이버 트렌드 데이터가 업데이트되었습니다. (mock)' })
+      setStatusMsg({ type: 'success', text: '네이버 트렌드 데이터가 업데이트되었습니다.' })
     } catch (e) {
       setStatusMsg({ type: 'error', text: e instanceof Error ? e.message : '업데이트에 실패했습니다.' })
     } finally {
