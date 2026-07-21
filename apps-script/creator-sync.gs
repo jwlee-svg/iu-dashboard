@@ -13,10 +13,11 @@
 function doGet() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('인플루언서')
   const data = sheet.getDataRange().getValues()
-  const headers = data[0]
-  const rows = data.slice(1)
+  // 1행은 "계정 영향력" 등 그룹 라벨이고, 실제 컬럼명은 2행에 있다.
+  const headers = data[1]
+  const rows = data.slice(2)
 
-  const col = (name) => headers.indexOf(name)
+  const col = (name) => headers.findIndex((h) => String(h).trim() === name)
 
   const idx = {
     no: col('no.'),
@@ -30,7 +31,7 @@ function doGet() {
     tkFollowers: col('TK팔로워'),
     faceExposure: col('얼굴 노출'),
     ageTargets: col('연령타겟'),
-    keywords: col('키워드 주제'),
+    keywords: col('키워드, 주제'),
     hasChildren: col('자녀(유의미한 경우만)'),
     isCommerce: col('커머스 후보'),
     isCelebrity: col('연예인'),
@@ -50,6 +51,12 @@ function doGet() {
     phone: col('연락처'),
     address: col('주소'),
     firstSeedingDate: col('첫 시딩일'),
+  }
+
+  if (idx.no === -1 || idx.name === -1) {
+    return ContentService.createTextOutput(
+      JSON.stringify({ error: '헤더를 찾지 못했습니다. "no." 또는 "크리에이터명" 컬럼명을 확인하세요.', headers }),
+    ).setMimeType(ContentService.MimeType.JSON)
   }
 
   const toNumber = (v) => {

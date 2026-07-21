@@ -4,7 +4,10 @@ export async function fetchCreatorsFromSheet(url: string): Promise<Creator[]> {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`구글시트 연동 응답 오류 (${res.status})`)
   const data = await res.json()
-  if (!Array.isArray(data)) throw new Error('구글시트 응답 형식이 올바르지 않습니다. Apps Script 배포를 확인하세요.')
+  if (!Array.isArray(data)) {
+    const message = data && typeof data === 'object' && 'error' in data ? String((data as { error: unknown }).error) : '구글시트 응답 형식이 올바르지 않습니다. Apps Script 배포를 확인하세요.'
+    throw new Error(message)
+  }
   return data as Creator[]
 }
 
