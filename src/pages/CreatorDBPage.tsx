@@ -4,8 +4,10 @@ import type { Creator } from '../types/creator'
 import { AFFECTION_COLORS, AFFECTION_OPTIONS, calcInfluence, formatSubs } from '../types/creator'
 import type { SponsorshipProject } from '../types/sponsorship'
 import { PROJECT_TYPE_COLOR, STATUS_COLOR } from '../types/sponsorship'
+import { fetchCreatorsFromSheet, mergeCreatorsById } from '../lib/sheetSync'
 
 const STORAGE_KEY = 'iu-dashboard-creators'
+const SHEET_URL_KEY = 'iu-dashboard-creators-sheet-url'
 const CONTENT_KEY = 'iu-dashboard-contents'
 const TARGETS_KEY = 'iu-dashboard-shipping-targets'
 const SP_KEY = 'iu-dashboard-sponsorship-projects'
@@ -135,6 +137,11 @@ export default function CreatorDBPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
+  const [showSheetModal, setShowSheetModal] = useState(false)
+  const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem(SHEET_URL_KEY) ?? '')
+  const [sheetLoading, setSheetLoading] = useState(false)
+  const [sheetError, setSheetError] = useState('')
+
   const hasUnsaved = JSON.stringify(creators) !== JSON.stringify(savedCreators)
 
   useEffect(() => {
@@ -147,6 +154,27 @@ export default function CreatorDBPage() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
     setSavedCreators(next)
     setStatus({ type: 'success', text: '인플루언서 DB가 저장되었습니다.' })
+  }
+
+  const handleImportFromSheet = async () => {
+    if (!sheetUrl.trim()) {
+      setSheetError('Apps Script 웹 앱 URL을 입력하세요.')
+      return
+    }
+    setSheetLoading(true)
+    setSheetError('')
+    try {
+      const incoming = await fetchCreatorsFromSheet(sheetUrl.trim())
+      const { merged, added, updated } = mergeCreatorsById(creators, incoming)
+      localStorage.setItem(SHEET_URL_KEY, sheetUrl.trim())
+      setCreators(merged)
+      setShowSheetModal(false)
+      setStatus({ type: 'success', text: `구글시트에서 불러왔습니다. 신규 ${added}건 · 업데이트 ${updated}건 (변경사항 저장을 눌러야 반영됩니다)` })
+    } catch (e) {
+      setSheetError(e instanceof Error ? e.message : '구글시트를 불러오지 못했습니다.')
+    } finally {
+      setSheetLoading(false)
+    }
   }
 
   const filtered = creators.filter((c) => {
@@ -286,6 +314,13 @@ export default function CreatorDBPage() {
           actions={
             <>
               <span className="text-sm text-slate-500">{creators.length}명 등록됨</span>
+              <button
+                type="button"
+                onClick={() => setShowSheetModal(true)}
+                className="rounded-2xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-[#5a3b2e] transition hover:bg-[#f6ead8]"
+              >
+                구글시트 불러오기
+              </button>
               <button
                 type="button"
                 onClick={() => save(creators)}
@@ -873,6 +908,39 @@ export default function CreatorDBPage() {
                 <button type="button" onClick={() => setShowModal(false)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">취소</button>
                 <button type="button" onClick={submitForm} className="rounded-xl bg-[#5a3b2e] px-5 py-2 text-sm font-semibold text-white hover:bg-[#462a20] transition">
                   {editingId ? '수정 저장' : '추가'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sheet Sync */}
+        {showSheetModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
+              <h2 className="text-base font-semibold text-slate-900 mb-2">구글시트 불러오기</h2>
+              <p className="text-sm text-slate-600 mb-4">
+                구글시트에 배포한 Apps Script 웹 앱 URL을 입력하세요. 시트의 "인플루언서" 탭 데이터를 불러와
+                기존 크리에이터는 업데이트하고, 새 크리에이터는 추가합니다.
+              </p>
+              <input
+                value={sheetUrl}
+                onChange={(e) => setSheetUrl(e.target.value)}
+                placeholder="https://script.google.com/macros/s/xxxx/exec"
+                className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
+              />
+              {sheetError && <p className="mt-2 text-sm text-red-600">{sheetError}</p>}
+              <div className="mt-6 flex justify-end gap-3">
+                <button type="button" onClick={() => setShowSheetModal(false)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImportFromSheet}
+                  disabled={sheetLoading}
+                  className="rounded-xl bg-[#5a3b2e] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#462a20] disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  {sheetLoading ? '불러오는 중...' : '불러오기'}
                 </button>
               </div>
             </div>
