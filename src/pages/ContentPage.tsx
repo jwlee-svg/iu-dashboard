@@ -2,7 +2,6 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import PageHeader from '../components/PageHeader'
 import type { Creator } from '../types/creator'
 import { formatSubs } from '../types/creator'
-import { creatorSample } from '../data/creatorSample'
 // mn: applied MyNormal brand and edit-UX updates
 import {
   Bar,
@@ -209,11 +208,11 @@ const CREATORS_STORAGE_KEY = 'iu-dashboard-creators'
 
 const loadCreators = (): Creator[] => {
   const raw = localStorage.getItem(CREATORS_STORAGE_KEY)
-  if (!raw) return creatorSample
+  if (!raw) return []
   try {
     const p = JSON.parse(raw)
-    return Array.isArray(p) ? p : creatorSample
-  } catch { return creatorSample }
+    return Array.isArray(p) ? p : []
+  } catch { return [] }
 }
 
 function CreatorPicker({
@@ -302,7 +301,7 @@ const pinStorageKey = 'iu-dashboard-pin'
 const parseStoredItems = (): ContentItem[] => {
   const raw = window.localStorage.getItem(storageKey)
   if (raw === null) {
-    return sampleData
+    return []
   }
 
   try {
@@ -438,14 +437,6 @@ function ContentPage() {
     // Initialize PIN in localStorage if not set
     if (!window.localStorage.getItem(pinStorageKey)) {
       window.localStorage.setItem(pinStorageKey, '0000')
-    }
-  }, [])
-
-  useEffect(() => {
-    // 최초 진입 시 예시 콘텐츠를 저장해두어, 검색 트렌드 등 다른 페이지에서도
-    // 콘텐츠 성과 페이지를 저장하지 않아도 예시 데이터를 바로 확인할 수 있게 한다.
-    if (window.localStorage.getItem(storageKey) === null) {
-      window.localStorage.setItem(storageKey, JSON.stringify(sampleData))
     }
   }, [])
 

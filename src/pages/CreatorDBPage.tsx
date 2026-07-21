@@ -4,7 +4,6 @@ import type { Creator } from '../types/creator'
 import { AFFECTION_COLORS, AFFECTION_OPTIONS, calcInfluence, formatSubs } from '../types/creator'
 import type { SponsorshipProject } from '../types/sponsorship'
 import { PROJECT_TYPE_COLOR, STATUS_COLOR } from '../types/sponsorship'
-import { creatorSample } from '../data/creatorSample'
 
 const STORAGE_KEY = 'iu-dashboard-creators'
 const CONTENT_KEY = 'iu-dashboard-contents'
@@ -14,12 +13,12 @@ const PRODUCTS_KEY = 'iu-dashboard-products'
 
 const loadCreators = (): Creator[] => {
   const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) return creatorSample
+  if (!raw) return []
   try {
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : creatorSample
+    return Array.isArray(parsed) ? parsed : []
   } catch {
-    return creatorSample
+    return []
   }
 }
 

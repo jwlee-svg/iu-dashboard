@@ -13,8 +13,6 @@ import {
 import PageHeader from '../components/PageHeader'
 import KpiCard from '../components/KpiCard'
 import type { Creator } from '../types/creator'
-import { creatorSample } from '../data/creatorSample'
-import { searchTrendSample } from '../data/searchTrendSample'
 import { fetchNaverTrendData } from '../lib/naverTrends'
 import type { PeriodPreset, SearchTrendProject, TrendDataPoint, TrendDevice } from '../types/searchTrend'
 import { PERIOD_PRESET_DAYS, PERIOD_PRESETS, keywordColor } from '../types/searchTrend'
@@ -70,18 +68,18 @@ const loadContentItems = (): ContentItemLite[] => {
 
 const loadCreators = (): Creator[] => {
   const raw = localStorage.getItem(CREATORS_KEY)
-  if (!raw) return creatorSample
+  if (!raw) return []
   try {
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : creatorSample
+    return Array.isArray(parsed) ? parsed : []
   } catch {
-    return creatorSample
+    return []
   }
 }
 
 const loadTrendProjects = (): SearchTrendProject[] => {
   const raw = localStorage.getItem(TREND_KEY)
-  if (raw === null) return searchTrendSample
+  if (raw === null) return []
   try {
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed) ? parsed : []

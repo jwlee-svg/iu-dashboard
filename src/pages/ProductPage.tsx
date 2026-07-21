@@ -1,21 +1,19 @@
 import { useEffect, useState } from 'react'
 import PageHeader from '../components/PageHeader'
 import type { Product, ProductCategory } from '../types/product'
-import { productSample, categorySample } from '../data/productSample'
-
 const PRODUCTS_KEY = 'iu-dashboard-products'
 const CATEGORIES_KEY = 'iu-dashboard-product-categories'
 
 const loadProducts = (): Product[] => {
   const raw = localStorage.getItem(PRODUCTS_KEY)
-  if (!raw) return productSample
-  try { const p = JSON.parse(raw); return Array.isArray(p) ? p : productSample } catch { return productSample }
+  if (!raw) return []
+  try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [] } catch { return [] }
 }
 
 const loadCategories = (): ProductCategory[] => {
   const raw = localStorage.getItem(CATEGORIES_KEY)
-  if (!raw) return categorySample
-  try { const p = JSON.parse(raw); return Array.isArray(p) ? p : categorySample } catch { return categorySample }
+  if (!raw) return []
+  try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [] } catch { return [] }
 }
 
 const fmt = (n: number) => n.toLocaleString('ko-KR')

@@ -1,8 +1,6 @@
 import { useMemo, useState } from 'react'
 import PageHeader from '../components/PageHeader'
 import type { ShippingProject, ShippingTarget, ShippingProjectStatus, ShippingTargetStatus, TargetCategory } from '../types/shipping'
-import { sampleProjects, sampleTargets } from '../data/shippingSample'
-
 // ─── Storage ────────────────────────────────────────────────────────────────
 const PROJECTS_KEY = 'iu-dashboard-shipping-projects'
 const TARGETS_KEY = 'iu-dashboard-shipping-targets'
@@ -10,16 +8,16 @@ const TARGETS_KEY = 'iu-dashboard-shipping-targets'
 const loadProjects = (): ShippingProject[] => {
   try {
     const raw = localStorage.getItem(PROJECTS_KEY)
-    if (!raw) return sampleProjects
+    if (!raw) return []
     return JSON.parse(raw)
-  } catch { return sampleProjects }
+  } catch { return [] }
 }
 const loadTargets = (): ShippingTarget[] => {
   try {
     const raw = localStorage.getItem(TARGETS_KEY)
-    if (!raw) return sampleTargets
+    if (!raw) return []
     return JSON.parse(raw)
-  } catch { return sampleTargets }
+  } catch { return [] }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

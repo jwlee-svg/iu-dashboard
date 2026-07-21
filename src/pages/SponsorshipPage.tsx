@@ -14,9 +14,6 @@ import {
   STATUS_COLOR,
   TARGET_CATEGORY_LABEL,
 } from '../types/sponsorship'
-import { productSample } from '../data/productSample'
-import { creatorSample } from '../data/creatorSample'
-import { sponsorshipSample } from '../data/sponsorshipSample'
 import PageHeader from '../components/PageHeader'
 import KpiCard from '../components/KpiCard'
 
@@ -26,10 +23,10 @@ const CREATORS_KEY = 'iu-dashboard-creators'
 
 const fmt = (n: number) => n.toLocaleString('ko-KR')
 
-const load = <T,>(key: string, fallback: T[]): T[] => {
+const load = <T,>(key: string): T[] => {
   const raw = localStorage.getItem(key)
-  if (!raw) return fallback
-  try { const p = JSON.parse(raw); return Array.isArray(p) ? p : fallback } catch { return fallback }
+  if (!raw) return []
+  try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [] } catch { return [] }
 }
 
 const emptyTarget = (): SponsorshipTarget => ({
@@ -76,10 +73,10 @@ const contentCount = (targets: SponsorshipTarget[]) =>
 
 
 export default function SponsorshipPage() {
-  const [projects, setProjects] = useState<SponsorshipProject[]>(() => load(SP_KEY, sponsorshipSample))
-  const [savedProjects, setSavedProjects] = useState<SponsorshipProject[]>(() => load(SP_KEY, sponsorshipSample))
-  const [products] = useState<Product[]>(() => load(PRODUCTS_KEY, productSample))
-  const [creators] = useState<Creator[]>(() => load(CREATORS_KEY, creatorSample))
+  const [projects, setProjects] = useState<SponsorshipProject[]>(() => load(SP_KEY))
+  const [savedProjects, setSavedProjects] = useState<SponsorshipProject[]>(() => load(SP_KEY))
+  const [products] = useState<Product[]>(() => load(PRODUCTS_KEY))
+  const [creators] = useState<Creator[]>(() => load(CREATORS_KEY))
 
   // KPI date filter
   const [kpiFrom, setKpiFrom] = useState('')
