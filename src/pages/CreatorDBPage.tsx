@@ -77,6 +77,13 @@ const FEATURE_FLAGS: { key: FeatureFlagKey; label: string }[] = [
   { key: 'hasGroupBuy', label: '공구가능' },
 ]
 
+interface YtPreview {
+  thumbnail: string
+  title: string
+  subscriberCount: number
+  videoCount: number
+}
+
 type SortField = 'name' | 'yt' | 'ig' | 'tk' | 'collab' | 'seeding'
 const SORT_FIELD_LABEL: Record<SortField, string> = {
   name: '이름',
@@ -165,6 +172,9 @@ export default function CreatorDBPage() {
   const [status, setStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+
+  const [ytPreviewCache, setYtPreviewCache] = useState<Record<string, YtPreview | 'loading' | 'error'>>({})
+  const [hoverPreview, setHoverPreview] = useState<{ creatorId: string; x: number; y: number } | null>(null)
 
   const [showSheetModal, setShowSheetModal] = useState(false)
   const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem(SHEET_URL_KEY) ?? '')
@@ -344,6 +354,30 @@ export default function CreatorDBPage() {
     const subs = Number(data.items?.[0]?.statistics?.subscriberCount ?? 0)
     if (!subs) throw new Error('구독자 정보를 가져올 수 없습니다.')
     return subs
+  }
+
+  const fetchYtPreview = (creator: Creator) => {
+    if (!creator.ytUrl || ytPreviewCache[creator.creatorId]) return
+    const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY
+    const match = creator.ytUrl.match(/(?:youtube\.com\/@|youtube\.com\/channel\/|youtu\.be\/)([^/?&\s]+)/i)
+    if (!apiKey || !match) return
+    setYtPreviewCache((prev) => ({ ...prev, [creator.creatorId]: 'loading' }))
+    fetch(`https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&forHandle=${match[1]}&key=${apiKey}`)
+      .then((res) => { if (!res.ok) throw new Error(); return res.json() })
+      .then((data) => {
+        const item = data.items?.[0]
+        if (!item) throw new Error()
+        setYtPreviewCache((prev) => ({
+          ...prev,
+          [creator.creatorId]: {
+            thumbnail: item.snippet?.thumbnails?.default?.url ?? '',
+            title: item.snippet?.title ?? creator.name,
+            subscriberCount: Number(item.statistics?.subscriberCount ?? 0),
+            videoCount: Number(item.statistics?.videoCount ?? 0),
+          },
+        }))
+      })
+      .catch(() => setYtPreviewCache((prev) => ({ ...prev, [creator.creatorId]: 'error' })))
   }
 
   const fetchYtSubs = async (creator: Creator) => {
@@ -583,7 +617,19 @@ export default function CreatorDBPage() {
                           </span>
                         </td>
                         <td className="px-3 py-3">
-                          <div className="flex items-center gap-2">
+                          <div
+                            className="flex items-center gap-2"
+                            onMouseEnter={(e) => {
+                              if (!c.ytUrl) return
+                              setHoverPreview({ creatorId: c.creatorId, x: e.clientX, y: e.clientY })
+                              fetchYtPreview(c)
+                            }}
+                            onMouseMove={(e) => {
+                              if (!c.ytUrl) return
+                              setHoverPreview((prev) => (prev && prev.creatorId === c.creatorId ? { ...prev, x: e.clientX, y: e.clientY } : prev))
+                            }}
+                            onMouseLeave={() => setHoverPreview((prev) => (prev?.creatorId === c.creatorId ? null : prev))}
+                          >
                             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: '#5a3b2e' }}>
                               {c.name[0]}
                             </div>
@@ -1073,6 +1119,37 @@ export default function CreatorDBPage() {
             </div>
           </div>
         )}
+
+        {/* YT Channel Preview */}
+        {hoverPreview && (() => {
+          const creator = sorted.find((c) => c.creatorId === hoverPreview.creatorId)
+          if (!creator?.ytUrl) return null
+          const preview = ytPreviewCache[creator.creatorId]
+          return (
+            <div
+              className="fixed z-50 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl pointer-events-none"
+              style={{ left: Math.min(hoverPreview.x + 16, window.innerWidth - 272), top: hoverPreview.y + 16 }}
+            >
+              {!preview || preview === 'loading' ? (
+                <p className="text-xs text-slate-400">채널 정보 불러오는 중...</p>
+              ) : preview === 'error' ? (
+                <p className="text-xs text-red-500">채널 정보를 가져오지 못했습니다.</p>
+              ) : (
+                <div className="flex items-center gap-3">
+                  {preview.thumbnail && (
+                    <img src={preview.thumbnail} alt={preview.title} className="h-12 w-12 shrink-0 rounded-full" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-900">{preview.title}</p>
+                    <p className="text-xs text-slate-500">
+                      구독자 {formatSubs(preview.subscriberCount)} · 영상 {preview.videoCount.toLocaleString('ko-KR')}개
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Sheet Sync */}
         {showSheetModal && (
