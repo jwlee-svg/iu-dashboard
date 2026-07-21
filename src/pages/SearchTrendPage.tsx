@@ -240,6 +240,77 @@ function ContentPicker({
   )
 }
 
+function MultiContentPicker({
+  contentItems,
+  excludeIds,
+  onAdd,
+}: {
+  contentItems: ContentItemLite[]
+  excludeIds: Set<string>
+  onAdd: (item: ContentItemLite) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const filtered = contentItems
+    .filter((c) => !excludeIds.has(c.id))
+    .filter(
+      (c) => query.trim() === '' || c.contentName.includes(query) || c.campaignName.includes(query) || c.influencerName.includes(query),
+    )
+    .slice(0, 8)
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder="비교 마커로 추가할 콘텐츠 검색..."
+        className="w-full rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-[#d4a373] focus:ring-2 focus:ring-[#f7e7d9]"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg max-h-72 overflow-y-auto">
+          {filtered.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onMouseDown={() => {
+                onAdd(c)
+                setQuery('')
+              }}
+              className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-[#f6ead8] transition"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-slate-900 truncate">{c.contentName}</p>
+                <p className="text-xs text-slate-400 truncate">
+                  {c.influencerName} · {c.campaignName} · {c.publishDate}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      {open && filtered.length === 0 && (
+        <div className="absolute z-20 mt-1 w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-400 shadow-lg">
+          검색 결과가 없습니다.
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function SearchTrendPage() {
   const [contentItems] = useState<ContentItemLite[]>(loadContentItems)
   const [creators] = useState<Creator[]>(loadCreators)
@@ -248,7 +319,7 @@ export default function SearchTrendPage() {
   const [activeTrendId, setActiveTrendId] = useState<string | null>(() => loadTrendProjects()[0]?.trendProjectId ?? null)
   const [newKeywordInput, setNewKeywordInput] = useState('')
   const [isUpdating, setIsUpdating] = useState(false)
-  const [markerHover, setMarkerHover] = useState<{ x: number; y: number } | null>(null)
+  const [markerHover, setMarkerHover] = useState<{ x: number; y: number; items: ContentItemLite[] } | null>(null)
   const [showDetailPanel, setShowDetailPanel] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -294,9 +365,22 @@ export default function SearchTrendPage() {
       trendData: [],
       lastUpdatedAt: '',
       memo: '',
+      markerProjectIds: [],
     }
     setTrendProjects((prev) => [draft, ...prev])
     setActiveTrendId(draft.trendProjectId)
+  }
+
+  const addMarkerProject = (contentId: string) => {
+    updateActiveTrend((t) => {
+      const ids = t.markerProjectIds ?? []
+      if (ids.includes(contentId) || contentId === t.projectId) return t
+      return { ...t, markerProjectIds: [...ids, contentId] }
+    })
+  }
+
+  const removeMarkerProject = (contentId: string) => {
+    updateActiveTrend((t) => ({ ...t, markerProjectIds: (t.markerProjectIds ?? []).filter((id) => id !== contentId) }))
   }
 
   const addKeyword = () => {
@@ -396,6 +480,25 @@ export default function SearchTrendPage() {
 
   const pivotedData = useMemo(() => (activeTrend ? pivotTrendData(activeTrend.trendData) : []), [activeTrend])
 
+  const markerContentItems = useMemo(() => {
+    if (!activeTrend || !activeContent) return [] as ContentItemLite[]
+    const ids = Array.from(new Set([activeContent.id, ...(activeTrend.markerProjectIds ?? [])]))
+    return ids
+      .map((id) => contentItems.find((c) => c.id === id))
+      .filter((c): c is ContentItemLite => Boolean(c))
+  }, [activeTrend, activeContent, contentItems])
+
+  const markerGroups = useMemo(() => {
+    const groups = new Map<string, ContentItemLite[]>()
+    markerContentItems.forEach((item) => {
+      if (!pivotedData.some((d) => d.date === item.publishDate)) return
+      const list = groups.get(item.publishDate) ?? []
+      list.push(item)
+      groups.set(item.publishDate, list)
+    })
+    return Array.from(groups.entries()).map(([date, items]) => ({ date, items }))
+  }, [markerContentItems, pivotedData])
+
   const keywordStats = useMemo(
     () => (activeTrend && activeContent ? computeKeywordStats(activeTrend, activeContent.publishDate) : []),
     [activeTrend, activeContent],
@@ -427,22 +530,26 @@ export default function SearchTrendPage() {
     )
   }
 
-  const renderUploadMarker = (props: any) => {
+  const renderClusterMarker = (items: ContentItemLite[]) => (props: any) => {
     const { viewBox } = props
     if (!viewBox) return <g />
     const { x, y } = viewBox
+    const count = items.length
+    const radius = Math.min(5 + (count - 1) * 2, 11)
+    const pillWidth = count > 1 ? 68 : 60
+    const isSingleActive = count === 1 && items[0].id === activeContent?.id
     return (
       <g
         style={{ cursor: 'pointer' }}
-        onMouseEnter={() => setMarkerHover({ x, y })}
+        onMouseEnter={() => setMarkerHover({ x, y, items })}
         onMouseLeave={() => setMarkerHover(null)}
-        onClick={() => setShowDetailPanel(true)}
+        onClick={() => { if (isSingleActive) setShowDetailPanel(true) }}
       >
-        <rect x={x - 30} y={y - 2} width={60} height={16} rx={8} fill="#5a3b2e" opacity={0.92} />
+        <rect x={x - pillWidth / 2} y={y - 2} width={pillWidth} height={16} rx={8} fill="#5a3b2e" opacity={0.92} />
         <text x={x} y={y + 10} textAnchor="middle" style={{ fontSize: 10, fill: '#fff', fontWeight: 600 }}>
-          업로드
+          {count > 1 ? `업로드 ${count}건` : '업로드'}
         </text>
-        <circle cx={x} cy={y + 24} r={5} fill="#5a3b2e" stroke="#fff" strokeWidth={2} />
+        <circle cx={x} cy={y + 24} r={radius} fill="#5a3b2e" stroke="#fff" strokeWidth={2} />
       </g>
     )
   }
@@ -569,6 +676,36 @@ export default function SearchTrendPage() {
               </div>
             </div>
 
+            {/* Marker projects */}
+            <div className="mb-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-slate-900 mb-1">비교 마커</h2>
+              <p className="mb-3 text-sm text-slate-500">
+                이 프로젝트 외에 차트에 업로드 마커로 같이 표시할 콘텐츠를 골라보세요. 같은 날짜에 겹치면 마커가 하나로 커집니다.
+              </p>
+              {(activeTrend.markerProjectIds ?? []).length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {(activeTrend.markerProjectIds ?? []).map((id) => {
+                    const item = contentItems.find((c) => c.id === id)
+                    if (!item) return null
+                    return (
+                      <div key={id} className="flex items-center gap-1.5 rounded-full border border-slate-300 bg-white pl-3 pr-1.5 py-1 text-xs">
+                        <span className="font-medium text-slate-700">{item.contentName}</span>
+                        <span className="text-slate-400">{item.publishDate}</span>
+                        <button type="button" onClick={() => removeMarkerProject(id)} className="px-1 text-slate-400 hover:text-red-500">
+                          ✕
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              <MultiContentPicker
+                contentItems={contentItems}
+                excludeIds={new Set([activeTrend.projectId, ...(activeTrend.markerProjectIds ?? [])])}
+                onAdd={(item) => addMarkerProject(item.id)}
+              />
+            </div>
+
             {/* Period + device + update */}
             <div className="mb-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="flex flex-wrap items-end justify-between gap-4">
@@ -682,26 +819,33 @@ export default function SearchTrendPage() {
                       {activeTrend.keywords.map((kw, idx) => (
                         <Line key={kw} type="monotone" dataKey={kw} name={kw} stroke={keywordColor(idx)} strokeWidth={2} dot={{ r: 2 }} connectNulls />
                       ))}
-                      {pivotedData.some((d) => d.date === activeContent.publishDate) && (
-                        <ReferenceLine x={activeContent.publishDate} stroke="#5a3b2e" strokeDasharray="4 4" label={renderUploadMarker} />
-                      )}
+                      {markerGroups.map(({ date, items }) => (
+                        <ReferenceLine key={date} x={date} stroke="#5a3b2e" strokeDasharray="4 4" label={renderClusterMarker(items)} />
+                      ))}
                     </LineChart>
                   </ResponsiveContainer>
                   {markerHover && (
                     <div
-                      className="pointer-events-none absolute z-10 w-64 rounded-2xl border border-slate-200 bg-white p-3 text-xs shadow-lg"
+                      className="pointer-events-none absolute z-10 w-72 rounded-2xl border border-slate-200 bg-white p-3 text-xs shadow-lg"
                       style={{ left: markerHover.x, top: markerHover.y + 32, transform: 'translate(-50%, 0)' }}
                     >
-                      <p className="mb-1 font-semibold text-slate-800 truncate">{activeContent.contentName}</p>
-                      <p className="text-slate-500">{creatorName(activeContent.creatorId) || activeContent.influencerName}</p>
-                      <p className="text-slate-500">업로드일: {activeContent.publishDate}</p>
-                      <p className="text-slate-500">{activeContent.projectType ?? '-'} · {activeContent.manager ?? '-'}</p>
-                      {aggregates && (
-                        <p className="text-slate-500">
-                          조회수 {formatNumber(aggregates.currentViews)} · CPV {aggregates.cpv > 0 ? `₩${aggregates.cpv.toFixed(1)}` : '-'}
-                        </p>
+                      {markerHover.items.map((item, idx) => {
+                        const itemAggregates = getContentAggregates(item)
+                        return (
+                          <div key={item.id} className={idx > 0 ? 'mt-2 border-t border-slate-100 pt-2' : ''}>
+                            <p className="font-semibold text-slate-800 truncate">{item.contentName}</p>
+                            <p className="text-slate-500">{creatorName(item.creatorId) || item.influencerName}</p>
+                            <p className="text-slate-500">업로드일: {item.publishDate}</p>
+                            <p className="text-slate-500">
+                              조회수 {formatNumber(itemAggregates.currentViews)}
+                              {itemAggregates.cpv > 0 ? ` · CPV ₩${itemAggregates.cpv.toFixed(1)}` : ''}
+                            </p>
+                          </div>
+                        )
+                      })}
+                      {markerHover.items.length === 1 && markerHover.items[0].id === activeContent.id && (
+                        <p className="mt-1 text-[10px] text-[#8b5b3a]">클릭하면 상세 패널이 열립니다</p>
                       )}
-                      <p className="mt-1 text-[10px] text-[#8b5b3a]">클릭하면 상세 패널이 열립니다</p>
                     </div>
                   )}
                 </div>

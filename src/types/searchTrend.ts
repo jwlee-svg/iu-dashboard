@@ -20,6 +20,8 @@ export interface SearchTrendProject {
   trendData: TrendDataPoint[]
   lastUpdatedAt: string
   memo?: string
+  /** 차트에 업로드 마커로 함께 표시할 다른 콘텐츠 ID 목록 (이 프로젝트 자체의 업로드일은 항상 표시됨) */
+  markerProjectIds?: string[]
 }
 
 export const PERIOD_PRESET_DAYS: Record<'7일' | '14일' | '30일' | '90일', number> = {
