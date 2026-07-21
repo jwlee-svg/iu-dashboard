@@ -62,6 +62,31 @@ const defaultCreator = (): Creator => ({
 const KEYWORD_OPTIONS = ['다이어트', '레시피', '베이킹', '자취/살림', '인테리어', '뷰티/패션', '운동/헬스', '육아', '음식/먹방', '요리/집밥', '직장인', '여행', '일상']
 const AGE_OPTIONS = ['18-24', '25-34', '35-44', '45+', '시니어(50+)']
 
+const YT_TIER_OPTIONS = ['소형(나노)', '소형(마이크로)', '중형(미드티어)', '대형(매크로)', '대형(메가)']
+
+type FeatureFlagKey = 'faceExposure' | 'isCelebrity' | 'isDoctor' | 'isNutritionFitness' | 'isDiabeticLowCarb' | 'isOrganic' | 'isCommerce' | 'hasPaidCollab' | 'hasGroupBuy'
+const FEATURE_FLAGS: { key: FeatureFlagKey; label: string }[] = [
+  { key: 'faceExposure', label: '얼굴노출' },
+  { key: 'isCelebrity', label: '연예인' },
+  { key: 'isDoctor', label: '의사' },
+  { key: 'isNutritionFitness', label: '영양/피트니스' },
+  { key: 'isDiabeticLowCarb', label: '당뇨/저탄고지' },
+  { key: 'isOrganic', label: '오가닉' },
+  { key: 'isCommerce', label: '커머스후보' },
+  { key: 'hasPaidCollab', label: '광고/협업가능' },
+  { key: 'hasGroupBuy', label: '공구가능' },
+]
+
+type SortField = 'name' | 'yt' | 'ig' | 'tk' | 'collab' | 'seeding'
+const SORT_FIELD_LABEL: Record<SortField, string> = {
+  name: '이름',
+  yt: 'YT 구독자',
+  ig: 'IG 팔로워',
+  tk: 'TK 팔로워',
+  collab: '협업횟수',
+  seeding: '첫 시딩일',
+}
+
 function tagChip(label: string, active: boolean, onClick: () => void) {
   return (
     <button
@@ -127,6 +152,10 @@ export default function CreatorDBPage() {
   const [search, setSearch] = useState('')
   const [filterAffection, setFilterAffection] = useState('')
   const [filterKeyword, setFilterKeyword] = useState('')
+  const [filterYtTier, setFilterYtTier] = useState('')
+  const [filterFeatures, setFilterFeatures] = useState<Set<FeatureFlagKey>>(new Set())
+  const [sortBy, setSortBy] = useState<SortField>('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [panelTab, setPanelTab] = useState<'info' | 'shipping' | 'content' | 'sponsorship'>('info')
   const [showModal, setShowModal] = useState(false)
@@ -182,11 +211,42 @@ export default function CreatorDBPage() {
     }
   }
 
+  const getCollabCount = (creator: Creator) => {
+    try {
+      const raw = localStorage.getItem(CONTENT_KEY)
+      if (!raw) return 0
+      const all = JSON.parse(raw) as ContentItemShort[]
+      return all.filter((i) => i.creatorId === creator.creatorId || i.influencerName === creator.name).length
+    } catch { return 0 }
+  }
+
   const filtered = creators.filter((c) => {
     if (search && !c.name.includes(search) && !c.realName.includes(search) && !c.agencyName.includes(search)) return false
     if (filterAffection && c.affection !== filterAffection) return false
     if (filterKeyword && !c.keywords.includes(filterKeyword)) return false
+    if (filterYtTier && calcInfluence('yt', c.ytSubscribers) !== filterYtTier) return false
+    for (const key of filterFeatures) {
+      if (!c[key]) return false
+    }
     return true
+  })
+
+  const sorted = [...filtered].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1
+    switch (sortBy) {
+      case 'yt':
+        return (a.ytSubscribers - b.ytSubscribers) * dir
+      case 'ig':
+        return (a.igFollowers - b.igFollowers) * dir
+      case 'tk':
+        return (a.tkFollowers - b.tkFollowers) * dir
+      case 'collab':
+        return (getCollabCount(a) - getCollabCount(b)) * dir
+      case 'seeding':
+        return (a.firstSeedingDate || '').localeCompare(b.firstSeedingDate || '') * dir
+      default:
+        return a.name.localeCompare(b.name) * dir
+    }
   })
 
   const selectedCreator = creators.find((c) => c.creatorId === selectedId) ?? null
@@ -234,15 +294,6 @@ export default function CreatorDBPage() {
           productMap,
         }))
     } catch { return [] }
-  }
-
-  const getCollabCount = (creator: Creator) => {
-    try {
-      const raw = localStorage.getItem(CONTENT_KEY)
-      if (!raw) return 0
-      const all = JSON.parse(raw) as ContentItemShort[]
-      return all.filter((i) => i.creatorId === creator.creatorId || i.influencerName === creator.name).length
-    } catch { return 0 }
   }
 
   const openAdd = () => {
@@ -424,11 +475,70 @@ export default function CreatorDBPage() {
             <option value="">특화분야 전체</option>
             {KEYWORD_OPTIONS.map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
-          {(search || filterAffection || filterKeyword) && (
-            <button type="button" onClick={() => { setSearch(''); setFilterAffection(''); setFilterKeyword('') }} className="text-xs text-slate-400 hover:text-[#5a3b2e]">
+          <select
+            value={filterYtTier}
+            onChange={(e) => setFilterYtTier(e.target.value)}
+            className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[#d4a373]"
+          >
+            <option value="">YT 영향력 전체</option>
+            {YT_TIER_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          {(search || filterAffection || filterKeyword || filterYtTier || filterFeatures.size > 0) && (
+            <button
+              type="button"
+              onClick={() => { setSearch(''); setFilterAffection(''); setFilterKeyword(''); setFilterYtTier(''); setFilterFeatures(new Set()) }}
+              className="text-xs text-slate-400 hover:text-[#5a3b2e]"
+            >
               초기화
             </button>
           )}
+        </div>
+
+        {/* Feature filters + Sort */}
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <span className="text-xs font-semibold text-slate-400 shrink-0">특징</span>
+          <div className="flex flex-wrap gap-2">
+            {FEATURE_FLAGS.map(({ key, label }) => {
+              const active = filterFeatures.has(key)
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() =>
+                    setFilterFeatures((prev) => {
+                      const next = new Set(prev)
+                      if (next.has(key)) next.delete(key)
+                      else next.add(key)
+                      return next
+                    })
+                  }
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition ${active ? 'bg-[#5a3b2e] text-white' : 'bg-slate-100 text-slate-600 hover:bg-[#f6ead8] hover:text-[#5a3b2e]'}`}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-400">정렬</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortField)}
+              className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-[#d4a373]"
+            >
+              {(Object.keys(SORT_FIELD_LABEL) as SortField[]).map((f) => (
+                <option key={f} value={f}>{SORT_FIELD_LABEL[f]}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+              className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-[#5a3b2e] hover:bg-[#f6ead8]"
+              title={sortDir === 'asc' ? '오름차순' : '내림차순'}
+            >
+              {sortDir === 'asc' ? '오름차순 ▲' : '내림차순 ▼'}
+            </button>
+          </div>
         </div>
 
         {/* Table + Slide Panel */}
@@ -457,7 +567,7 @@ export default function CreatorDBPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((c, idx) => {
+                  {sorted.map((c, idx) => {
                     const isSelected = selectedId === c.creatorId
                     const collabCount = getCollabCount(c)
                     return (
@@ -541,7 +651,7 @@ export default function CreatorDBPage() {
                       </tr>
                     )
                   })}
-                  {filtered.length === 0 && (
+                  {sorted.length === 0 && (
                     <tr>
                       <td colSpan={12} className="px-4 py-12 text-center text-sm text-slate-400">조건에 맞는 크리에이터가 없습니다.</td>
                     </tr>
