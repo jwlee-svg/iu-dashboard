@@ -12,7 +12,10 @@
  */
 function doGet() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('인플루언서')
-  const data = sheet.getDataRange().getValues()
+  const range = sheet.getDataRange()
+  const data = range.getValues()
+  // 스마트 칩(URL 붙여넣기 시 페이지 제목으로 표시됨) 링크의 실제 URL을 얻기 위해 필요하다.
+  const richValues = range.getRichTextValues()
   // 1행은 "계정 영향력" 등 그룹 라벨이고, 실제 컬럼명은 2행에 있다.
   const headers = data[1]
   const rows = data.slice(2)
@@ -71,6 +74,19 @@ function doGet() {
     return String(v).split(',').map((s) => s.trim()).filter(Boolean)
   }
   const toText = (v) => (v === undefined || v === null || v === '-' ? '' : String(v))
+  // 스마트 칩 셀은 getValues()로는 표시 제목만 나오므로, 리치 텍스트에서 실제 링크 URL을 우선 추출한다.
+  const linkOrText = (rowAbsIdx, colIdx) => {
+    if (colIdx === -1) return ''
+    const rich = richValues[rowAbsIdx][colIdx]
+    const wholeLink = rich && rich.getLinkUrl && rich.getLinkUrl()
+    if (wholeLink) return wholeLink
+    const runs = rich && rich.getRuns ? rich.getRuns() : []
+    for (let i = 0; i < runs.length; i += 1) {
+      const runLink = runs[i].getLinkUrl && runs[i].getLinkUrl()
+      if (runLink) return runLink
+    }
+    return toText(data[rowAbsIdx][colIdx])
+  }
   const toDate = (v) => {
     if (!v) return ''
     if (Object.prototype.toString.call(v) === '[object Date]') {
@@ -81,17 +97,19 @@ function doGet() {
 
   const result = rows
     .filter((r) => r[idx.no] !== '' && r[idx.name])
-    .map((r) => ({
+    .map((r, i) => {
+      const rowAbsIdx = i + 2
+      return {
       creatorId: 'cr_' + r[idx.no],
       name: toText(r[idx.name]),
       realName: toText(r[idx.realName]),
       affection: toText(r[idx.affection]) || '발송전검토',
-      ytUrl: toText(r[idx.ytUrl]),
+      ytUrl: linkOrText(rowAbsIdx, idx.ytUrl),
       ytSubscribers: toNumber(r[idx.ytSubscribers]),
       ytLastUpdated: '',
-      igUrl: toText(r[idx.igUrl]),
+      igUrl: linkOrText(rowAbsIdx, idx.igUrl),
       igFollowers: toNumber(r[idx.igFollowers]),
-      tkUrl: toText(r[idx.tkUrl]),
+      tkUrl: linkOrText(rowAbsIdx, idx.tkUrl),
       tkFollowers: toNumber(r[idx.tkFollowers]),
       faceExposure: toBool(r[idx.faceExposure]),
       ageTargets: toList(r[idx.ageTargets]),
@@ -112,9 +130,10 @@ function doGet() {
       agencyContact: toText(r[idx.agencyContact]),
       shippingNote: toText(r[idx.shippingNote]),
       smsName: toText(r[idx.smsName]),
-      notionUrl: toText(r[idx.exposureUrl]),
+      notionUrl: linkOrText(rowAbsIdx, idx.exposureUrl),
       notes: toText(r[idx.notes]),
-    }))
+      }
+    })
 
   return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON)
 }
