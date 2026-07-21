@@ -42,15 +42,10 @@ select {
   background: rgba(212,163,115,0.18);
 }
 
-/* layout max widths tuned for desktop-first */
+/* unified layout container — all pages use the same width */
 .app-container {
-  max-width: 1200px;
-}
-@media (min-width: 1440px) {
-  .app-container { max-width: 1600px; }
-}
-@media (min-width: 1920px) {
-  .app-container { max-width: 1800px; }
+  max-width: 1600px;
+  width: 100%;
 }
 
 /* Editing card emphasis animation */
